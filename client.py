@@ -42,7 +42,7 @@ class GlacierParams:
 		self.param.setdefault(key, {})[dict_key] = dict_value
 
 class Client:
-
+ 
 	def __init__(self):
 		self.signer 			= Signer()
 		# self.service 			= 'glacier'
