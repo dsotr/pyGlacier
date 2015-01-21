@@ -18,9 +18,9 @@ class GlacierParams:
 	
 	def __init__(self):
 		self.params = dict()
-		self.param[REQ_PARAM] = dict()
-		self.param[HEADERS] = dict()
-		self.param[PAYLOAD] = ''
+		self.params[GlacierParams.REQ_PARAM] = dict()
+		self.params[GlacierParams.HEADERS] = dict()
+		self.params[GlacierParams.PAYLOAD] = ''
 		
 	def set(self, key, value):
 		# key should be one of the static variables listed above
@@ -39,7 +39,7 @@ class GlacierParams:
 		return self.params
 	
 	def addToDict(self, key, dict_key, dict_value):
-		self.param.setdefault(key, {})[dict_key] = dict_value
+		self.params.setdefault(key, {})[dict_key] = dict_value
 
 class Client:
  
@@ -52,7 +52,7 @@ class Client:
 		# self.request_parameters = {'Version': self.api_version}
 		# self.headers 			= {'Host': self.host, 	'x-amz-glacier-version': GlacierParams.API_VERSION, }
 		self.payload 			= ''
-		self.amzdatetime = self.datestamp = None
+		#self.amzdatetime = self.datestamp = None
 		self.method = None
 		self.canonical_uri = None
 
@@ -64,12 +64,12 @@ class Client:
 		return (amzdatetime, datestamp)
 	
 	def makeCanonicalQueryString(self, param):
-		return urllib.urlencode(sorted(tuple(param.get(REQ_PARAM).items())))
+		return urllib.urlencode(sorted(tuple(param.get(GlacierParams.REQ_PARAM).items())))
 	
 	def makeCanonicalHeaders(self, param):
 		param.set('HEADERS', {
-			'x-amz-date': GlacierParams.AMZDATETIME,
-			'Host': self.host,
+			'x-amz-date': param.get(GlacierParams.AMZDATETIME),
+			'host': self.host,
 			'x-amz-glacier-version': GlacierParams.API_VERSION,
 		})
 		return '\n'.join([':'.join(e) for e in sorted(tuple(param.get('HEADERS').items()))]) + '\n'
@@ -89,6 +89,7 @@ class Client:
 			self.makeSignedHeaders(), 
 			self.signer.hashHex(param.get(GlacierParams.PAYLOAD)),
 		]
+		#print '\n'+'\n'.join(canonical_request_content)+'\n'
 		return '\n'.join(canonical_request_content)
 		
 	def makeSignedHeaders(self):
@@ -96,23 +97,23 @@ class Client:
 		header_list = ['host','x-amz-date','x-amz-glacier-version']
 		return ';'.join(sorted(header_list))
 	
-	def makeCredentialScope(self):
-		credential_scope = '/'.join([self.datestamp, self.region, GlacierParams.SERVICE, 'aws4_request'])
+	def makeCredentialScope(self, param):
+		credential_scope = '/'.join([param.get(GlacierParams.DATE), self.region, GlacierParams.SERVICE, 'aws4_request'])
 		return credential_scope
 	
-	def makeStringToSign(self):
-		string_to_sign = '\n'.join([self.signer.algorithm, self.amzdatetime, self.makeCredentialScope(), self.signer.hashHex(self.makeCanonicalRequest())])
-		print string_to_sign
+	def makeStringToSign(self, param):
+		string_to_sign = '\n'.join([self.signer.algorithm, param.get(GlacierParams.AMZDATETIME), self.makeCredentialScope(param), self.signer.hashHex(self.makeCanonicalRequest(param))])
+		#print string_to_sign
 		return string_to_sign
 	
-	def makeSignature(self):
-		signing_key = self.signer.getSignatureKey(self.datestamp, self.region, GlacierParams.SERVICE)
+	def makeSignature(self, param):
+		signing_key = self.signer.getSignatureKey(param.get(GlacierParams.DATE), self.region, GlacierParams.SERVICE)
 		# Sign the string_to_sign using the signing_key
-		signature = self.signer.signHex(signing_key, self.makeStringToSign())
+		signature = self.signer.signHex(signing_key, self.makeStringToSign(param))
 		return signature
 	
-	def makeAuthorizationHeader(self):
-		authorization_header = self.signer.algorithm + ' ' + 'Credential=' + self.signer.getAccessKey() + '/' + self.makeCredentialScope() + ', ' +  'SignedHeaders=' + self.makeSignedHeaders() + ', ' + 'Signature=' + self.makeSignature()
+	def makeAuthorizationHeader(self, param):
+		authorization_header = self.signer.algorithm + ' ' + 'Credential=' + self.signer.getAccessKey() + '/' + self.makeCredentialScope(param) + ', ' +  'SignedHeaders=' + self.makeSignedHeaders() + ', ' + 'Signature=' + self.makeSignature(param)
 		return authorization_header
 		
 	def listVaults(self):
@@ -129,12 +130,12 @@ class Client:
 		endpoint = 'https://%s/-/vaults' %self.host
 		request_url = endpoint + '?' + self.makeCanonicalQueryString(param)
 		# self.headers['Authorization'] = self.makeAuthorizationHeader()
-		param.addToDict(GlacierParams.HEADERS, 'Authorization', self.makeAuthorizationHeader())
+		param.addToDict(GlacierParams.HEADERS, 'Authorization', self.makeAuthorizationHeader(param))
 		
-		print self.headers
-		print '\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++'
+		print param.get(GlacierParams.HEADERS)
+		#print '\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++'
 		print 'Request URL = ' + request_url
-		r = requests.get(request_url, headers=self.headers)
-		print '\nRESPONSE++++++++++++++++++++++++++++++++++++'
-		print 'Response code: %d\n' % r.status_code
+		r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
+		#print '\nRESPONSE++++++++++++++++++++++++++++++++++++'
+		#print 'Response code: %d\n' % r.status_code
 		print r.text
