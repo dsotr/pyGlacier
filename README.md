@@ -1,2 +1,2 @@
 # pyGlacier
-Amazon Glacier client, using Amazon's REST API directly (not the boto library)
+Amazon Glacier client, written in python, using Amazon's REST API directly (not the boto library)
