@@ -1,7 +1,8 @@
 import requests, requests_toolbelt
 from aws_libs import Signer
-import urllib, datetime
-
+import urllib, datetime, json
+# see https://github.com/shazow/urllib3/issues/497#issuecomment-66942891 to understand the following line
+requests.packages.urllib3.disable_warnings()
 
 class GlacierParams:
     # Defaults
@@ -112,21 +113,18 @@ class Client:
         authorization_header = self.signer.algorithm + ' ' + 'Credential=' + self.signer.getAccessKey() + '/' + self.makeCredentialScope(
             param) + ', ' + 'SignedHeaders=' + self.makeSignedHeaders() + ', ' + 'Signature=' + self.makeSignature(
             param)
-        return authorization_header
+        param.addToDict(GlacierParams.HEADERS, 'Authorization', authorization_header)
+        # return authorization_header
 
     def listVaults(self):
         param = GlacierParams()
-        # self.method = 'GET'
         param.set(GlacierParams.METHOD, 'GET')
-        # self.canonical_uri = '/-/vaults'
         param.set(GlacierParams.URI, '/-/vaults')
-        # self.amzdatetime, self.datestamp = self.makeDates()
         param.makeDates()
 
         endpoint = 'https://%s/-/vaults' % self.host
         request_url = endpoint + '?' + self.makeCanonicalQueryString(param)
-        # self.headers['Authorization'] = self.makeAuthorizationHeader()
-        param.addToDict(GlacierParams.HEADERS, 'Authorization', self.makeAuthorizationHeader(param))
+        self.makeAuthorizationHeader(param)
 
         #print param.get(GlacierParams.HEADERS)
         # print '\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++'
@@ -134,8 +132,9 @@ class Client:
         r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
         #print '\nRESPONSE++++++++++++++++++++++++++++++++++++'
         #print 'Response code: %d\n' % r.status_code
-        print r.text
+        return r.text
 
 if __name__=='__main__':
     c=Client()
-    c.listVaults()
+
+    print json.dumps(json.loads(c.listVaults()), sort_keys=True, indent=4, separators=(',', ': '))
