@@ -44,8 +44,8 @@ class GlacierParams:
     def makeDates(self):
         # Create a date for headers and the credential string
         t = datetime.datetime.utcnow()
-        param.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
-        param.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
+        self.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
+        self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
 
 class Client:
     def __init__(self):
@@ -135,3 +135,7 @@ class Client:
         #print '\nRESPONSE++++++++++++++++++++++++++++++++++++'
         #print 'Response code: %d\n' % r.status_code
         print r.text
+
+if __name__=='__main__':
+    c=Client()
+    c.listVaults()
