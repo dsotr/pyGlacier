@@ -29,7 +29,9 @@ class GlacierParams:
 
     def setHeader(self, key, value):
         # key should be one of the static variables listed above
-        self.params[GlacierParams.HEADERS][key] = value
+        self.addToDict(GlacierParams.HEADERS, key, value)
+        # self.params[GlacierParams.HEADERS][key] = value
+        # print self.params
 
     def get(self, key):
         return self.params.get(key, None)
@@ -44,7 +46,10 @@ class GlacierParams:
         return self.params
 
     def addToDict(self, key, dict_key, dict_value):
+        # print "Add to dict KEY: %s %s %s" %( key, dict_key, dict_value)
+        # print "before add to dict" + str(self.params)
         self.params.setdefault(key, {})[dict_key] = dict_value
+        # print "After add to dict" + str(self.params)
 
     def makeDates(self):
         # Create a date for headers and the credential string
@@ -70,12 +75,12 @@ class Client:
         return urllib.urlencode(sorted(tuple(param.get(GlacierParams.REQ_PARAM).items())))
 
     def makeCanonicalHeaders(self, param):
-        param.set('HEADERS', {
-            'x-amz-date': param.get(GlacierParams.AMZDATETIME),
-            'host': self.host,
-            'x-amz-glacier-version': GlacierParams.API_VERSION,
-        })
-        return '\n'.join([':'.join(e) for e in sorted(tuple(param.get('HEADERS').items()))]) + '\n'
+        param.setHeader('x-amz-date', param.get(GlacierParams.AMZDATETIME))
+        param.setHeader('host', self.host)
+        param.setHeader('x-amz-glacier-version', GlacierParams.API_VERSION)
+        canonical_headers_list = ['host','x-amz-date','x-amz-glacier-version']
+        header_list = map(lambda x: (x[0].lower().strip(), x[1].strip()), filter(lambda x: x[0] in canonical_headers_list, tuple(param.get('HEADERS').items())))
+        return '\n'.join([':'.join(e) for e in sorted(header_list)]) + '\n'
 
     def makeCanonicalRequest(self, param):
         canonical_request_content = [  # self.method,   # self.canonical_uri,   # self.makeCanonicalQueryString(),
@@ -88,7 +93,7 @@ class Client:
                                        self.makeSignedHeaders(),
                                        self.signer.hashHex(param.get(GlacierParams.PAYLOAD)),
         ]
-        # print '\n'+'\n'.join(canonical_request_content)+'\n'
+        print 'Canonical String\n'+'\n'.join(canonical_request_content)+'\n'
         return '\n'.join(canonical_request_content)
 
     def makeSignedHeaders(self):
@@ -104,7 +109,8 @@ class Client:
         string_to_sign = '\n'.join(
             [self.signer.algorithm, param.get(GlacierParams.AMZDATETIME), self.makeCredentialScope(param),
              self.signer.hashHex(self.makeCanonicalRequest(param))])
-        # print string_to_sign
+        print "String to sign:"
+        print string_to_sign
         return string_to_sign
 
     def makeSignature(self, param):
@@ -114,9 +120,11 @@ class Client:
         return signature
 
     def makeAuthorizationHeader(self, param):
-        authorization_header = self.signer.algorithm + ' ' + 'Credential=' + self.signer.getAccessKey() + '/' + self.makeCredentialScope(
-            param) + ', ' + 'SignedHeaders=' + self.makeSignedHeaders() + ', ' + 'Signature=' + self.makeSignature(
-            param)
+        authorization_header = self.signer.algorithm + ' ' + \
+                               'Credential=' + self.signer.getAccessKey() + '/' + \
+                               self.makeCredentialScope(param) + ', ' + \
+                               'SignedHeaders=' + self.makeSignedHeaders() + \
+                               ', ' + 'Signature=' + self.makeSignature(param)
         param.addToDict(GlacierParams.HEADERS, 'Authorization', authorization_header)
         # return authorization_header
 
@@ -134,7 +142,7 @@ class Client:
         # print '\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++'
         print 'Request URL = ' + request_url
         r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
-        #print '\nRESPONSE++++++++++++++++++++++++++++++++++++'
+        # print '\nRESPONSE++++++++++++++++++++++++++++++++++++'
         #print 'Response code: %d\n' % r.status_code
         return r.text
 
@@ -144,19 +152,23 @@ class Client:
     def upload_archive(self, file_path, vault_name):
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
-        param.set(GlacierParams.URI, '/-/vaults/%s/archives') %vault_name
+        param.set(GlacierParams.URI, '/-/vaults/%s/archives' %vault_name)
         param.makeDates()
         param.setHeader('Content-Length', str(os.path.getsize(file_path)))
         param.setHeader('x-amz-archive-description', self.get_archive_name(file_path))
         content = open(file_path).read()
+        param.set(GlacierParams.PAYLOAD, content)
         param.setHeader('x-amz-content-sha256', self.signer.hashHex(content))
-        param.setHeader('x-amz-sha256-tree-hash', self.signer.treeHash(content))
+        param.setHeader('x-amz-sha256-tree-hash', self.signer.treeHash(file_path))
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         request_url = endpoint + '?' + self.makeCanonicalQueryString(param)
         self.makeAuthorizationHeader(param)
-        print 'Request URL = ' + request_url
-        r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
-        return r.text
+        # print 'Request URL = ' + request_url
+        # print param.get(GlacierParams.HEADERS)
+
+        r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS), data=content, timeout=20)
+        print 'Response code: %d\n' % r.status_code
+        return r
 
     def get_archive_name(selfself, file_path):
         '''returns the archive name from the file path'''
@@ -164,5 +176,8 @@ class Client:
 
 if __name__=='__main__':
     c=Client()
+    response = c.upload_archive('test-upload.txt','Foto')
+    print response.text
+    print response.headers
 
-    print json.dumps(json.loads(c.listVaults()), sort_keys=True, indent=4, separators=(',', ': '))
+    #print json.dumps(json.loads(c.listVaults()), sort_keys=True, indent=4, separators=(',', ': '))

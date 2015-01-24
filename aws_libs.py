@@ -43,8 +43,9 @@ class Signer:
             count += len(data)
             print('%i %%' % (count * 100 / totlen))
         # f.close()
-        print "root built"
-        print buildTreeFromRoot(l)[-1][0].encode("hex")
+        # print "root built"
+        # print buildTreeFromRoot(l)[-1][0].encode("hex")
+        return buildTreeFromRoot(l)[-1][0].encode("hex")
 
 
 def buildTreeFromRoot(root, L=None):
