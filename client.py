@@ -1,6 +1,6 @@
 import requests, requests_toolbelt
 from aws_libs import Signer
-import urllib, datetime, json
+import urllib, datetime, json, os
 # see https://github.com/shazow/urllib3/issues/497#issuecomment-66942891 to understand the following line
 requests.packages.urllib3.disable_warnings()
 
@@ -26,6 +26,10 @@ class GlacierParams:
     def set(self, key, value):
         # key should be one of the static variables listed above
         self.params[key] = value
+
+    def setHeader(self, key, value):
+        # key should be one of the static variables listed above
+        self.params[GlacierParams.HEADERS][key] = value
 
     def get(self, key):
         return self.params.get(key, None)
@@ -133,6 +137,30 @@ class Client:
         #print '\nRESPONSE++++++++++++++++++++++++++++++++++++'
         #print 'Response code: %d\n' % r.status_code
         return r.text
+
+    def initiate_multipart_upload(self, file_path):
+        pass
+
+    def upload_archive(self, file_path, vault_name):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'POST')
+        param.set(GlacierParams.URI, '/-/vaults/%s/archives') %vault_name
+        param.makeDates()
+        param.setHeader('Content-Length', str(os.path.getsize(file_path)))
+        param.setHeader('x-amz-archive-description', self.get_archive_name(file_path))
+        content = open(file_path).read()
+        param.setHeader('x-amz-content-sha256', self.signer.hashHex(content))
+        param.setHeader('x-amz-sha256-tree-hash', self.signer.treeHash(content))
+        endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
+        request_url = endpoint + '?' + self.makeCanonicalQueryString(param)
+        self.makeAuthorizationHeader(param)
+        print 'Request URL = ' + request_url
+        r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
+        return r.text
+
+    def get_archive_name(selfself, file_path):
+        '''returns the archive name from the file path'''
+        return os.path.basename(file_path)
 
 if __name__=='__main__':
     c=Client()
