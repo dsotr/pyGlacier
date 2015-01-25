@@ -8,6 +8,7 @@ class GlacierParams:
     # Defaults
     API_VERSION = '2012-06-01'
     SERVICE = 'glacier'
+    DEFAULT_PART_SIZE = str(2**(20 + 8)) #268435456 = 256Mb
     # Static attribute names
     METHOD = 'METHOD'
     URI = 'URI'
@@ -146,8 +147,19 @@ class Client:
         #print 'Response code: %d\n' % r.status_code
         return r.text
 
-    def initiate_multipart_upload(self, file_path):
-        pass
+    def initiate_multipart_upload(self, multipard_desc, vault_name):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'POST')
+        param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads' %vault_name)
+        param.makeDates()
+        param.setHeader('x-amz-archive-description', multipard_desc)
+        param.setHeader('x-amz-part-size', GlacierParams.DEFAULT_PART_SIZE)
+        endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
+        request_url = endpoint + '?' + self.makeCanonicalQueryString(param)
+        self.makeAuthorizationHeader(param)
+        r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS))
+        print 'Response code: %d\n' % r.status_code
+        return r
 
     def upload_archive(self, file_path, vault_name):
         param = GlacierParams()
@@ -166,7 +178,7 @@ class Client:
         # print 'Request URL = ' + request_url
         # print param.get(GlacierParams.HEADERS)
 
-        r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS), data=content, timeout=20)
+        r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS), data=content)
         print 'Response code: %d\n' % r.status_code
         return r
 
@@ -176,8 +188,7 @@ class Client:
 
 if __name__=='__main__':
     c=Client()
-    response = c.upload_archive('test-upload.txt','Foto')
+    response = c.initiate_multipart_upload('test-multipart-1','Foto')
     print response.text
     print response.headers
 
-    #print json.dumps(json.loads(c.listVaults()), sort_keys=True, indent=4, separators=(',', ': '))
