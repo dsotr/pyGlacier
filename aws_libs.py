@@ -7,7 +7,7 @@ class Signer:
         self.access_key = os.environ.get('AWS_ACCESS_KEY_ID')
         self.secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
         if self.access_key is None or self.secret_key is None:
-            print 'No access key is available.'
+            print('No access key is available.')
             sys.exit()
         self.algorithm = 'AWS4-HMAC-SHA256'
 
