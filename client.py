@@ -1,8 +1,8 @@
 import urllib.parse
 import datetime
 import os
-
 import requests
+import settings
 
 from aws_libs import Signer
 
@@ -11,10 +11,7 @@ from aws_libs import Signer
 
 
 class GlacierParams:
-    # Defaults
-    API_VERSION = '2012-06-01'
-    SERVICE = 'glacier'
-    DEFAULT_PART_SIZE = str(2 ** (20 + 8))  # 268435456 = 256Mb
+
     # Static attribute names
     METHOD = 'METHOD'
     URI = 'URI'
@@ -25,10 +22,14 @@ class GlacierParams:
     DATE = 'DATE'
 
     def __init__(self):
+        """
+        This class stores the parameters needed by the GlacierClient methods. It's basically a dictionary.
+        """
         self.params = dict()
         self.params[GlacierParams.REQ_PARAM] = dict()
         self.params[GlacierParams.HEADERS] = dict()
         self.params[GlacierParams.PAYLOAD] = ''.encode('utf-8')
+        self.make_dates()
 
     def set(self, key, value):
         # key should be one of the static variables listed above
@@ -37,8 +38,6 @@ class GlacierParams:
     def set_header(self, key, value):
         # key should be one of the static variables listed above
         self.add_to_dict(GlacierParams.HEADERS, key, value)
-        # self.params[GlacierParams.HEADERS][key] = value
-        # print self.params
 
     def get(self, key):
         return self.params.get(key, None)
@@ -53,31 +52,31 @@ class GlacierParams:
         return self.params
 
     def add_to_dict(self, key, dict_key, dict_value):
-        # print "Add to dict KEY: %s %s %s" %( key, dict_key, dict_value)
-        # print "before add to dict" + str(self.params)
+        """updates a dictionary (accessed through the first key) with the
+        supplied key/value pair, creating a new dictionary if needed"""
         self.params.setdefault(key, {})[dict_key] = dict_value
-        # print "After add to dict" + str(self.params)
 
     def make_dates(self):
-        # Create a date for headers and the credential string
+        """Create a date for headers and the credential string"""
         t = datetime.datetime.utcnow()
         self.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
         self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
 
 
-class Client:
-    def __init__(self, debug=False):
+class InvalidRegionException(Exception):
+    pass
+
+
+class GlacierClient:
+    def __init__(self, region='us-east-1', debug=False):
         self.signer = Signer()
         # self.service 			= 'glacier'
-        self.region = 'us-east-1'
+        if region in settings.REGIONS:
+            self.region = region
+        else:
+            raise InvalidRegionException('Invalid region %s.\nAvailable regions: %s' % (region, str(settings.REGIONS)))
         self.host = 'glacier.%s.amazonaws.com' % self.region
-        # self.api_version 		= '2012-06-01'
-        # self.request_parameters = {'Version': self.api_version}
-        # self.headers 			= {'Host': self.host, 	'x-amz-glacier-version': GlacierParams.API_VERSION, }
         self.payload = ''
-        # self.amzdatetime = self.datestamp = None
-        # self.method = None
-        # self.canonical_uri = None
         self.debug = debug
 
     def make_canonical_query_string(self, param):
@@ -86,7 +85,7 @@ class Client:
     def make_canonical_headers(self, param):
         param.set_header('x-amz-date', param.get(GlacierParams.AMZDATETIME))
         param.set_header('host', self.host)
-        param.set_header('x-amz-glacier-version', GlacierParams.API_VERSION)
+        param.set_header('x-amz-glacier-version', settings.API_VERSION)
         canonical_headers_list = ['host', 'x-amz-date', 'x-amz-glacier-version']
         header_list = map(lambda x: (x[0].lower().strip(), x[1].strip()),
                           filter(lambda x: x[0] in canonical_headers_list, tuple(param.get('HEADERS').items())))
@@ -108,12 +107,16 @@ class Client:
         return '\n'.join(canonical_request_content)
 
     def make_signed_headers(self):
-        # Fixed list of headers to sign (minimal list)
+        """This lists the headers in the canonical_headers list,
+        delimited with ";" and in alpha order.
+        Note: The request can include any headers;
+        canonical_headers and signed_headers lists those that you want to be included
+        in the hash of the request. "Host" and "x-amz-date" are always required."""
         header_list = ['host', 'x-amz-date', 'x-amz-glacier-version']
         return ';'.join(sorted(header_list))
 
     def make_credential_scope(self, param):
-        credential_scope = '/'.join([param.get(GlacierParams.DATE), self.region, GlacierParams.SERVICE, 'aws4_request'])
+        credential_scope = '/'.join([param.get(GlacierParams.DATE), self.region, settings.SERVICE, 'aws4_request'])
         return credential_scope
 
     def make_string_to_sign(self, param):
@@ -126,44 +129,43 @@ class Client:
         return string_to_sign
 
     def make_signature(self, param):
-        signing_key = self.signer.getSignatureKey(param.get(GlacierParams.DATE), self.region, GlacierParams.SERVICE)
+        signing_key = self.signer.getSignatureKey(param.get(GlacierParams.DATE), self.region, settings.SERVICE)
         # Sign the string_to_sign using the signing_key
         signature = self.signer.signHex(signing_key, self.make_string_to_sign(param))
         return signature
 
     def make_authorization_header(self, param):
+        """The signing information can be either in a query string value or in a header named Authorization.
+        Create authorization header and add to request headers"""
         authorization_header = self.signer.algorithm + ' ' + \
-                               'Credential=' + self.signer.getAccessKey() + '/' + \
-                               self.make_credential_scope(param) + ', ' + \
-                               'SignedHeaders=' + self.make_signed_headers() + \
-                               ', ' + 'Signature=' + self.make_signature(param)
-        param.add_to_dict(GlacierParams.HEADERS, 'Authorization', authorization_header)
+            'Credential=' + self.signer.getAccessKey() + '/' + \
+            self.make_credential_scope(param) + ', ' + \
+            'SignedHeaders=' + self.make_signed_headers() + \
+            ', ' + 'Signature=' + self.make_signature(param)
+        param.set_header('Authorization', authorization_header)
         # return authorization_header
 
     def list_vaults(self):
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults')
-        param.make_dates()
-
+        # param.make_dates()
         endpoint = 'https://%s/-/vaults' % self.host
         request_url = endpoint + '?' + self.make_canonical_query_string(param)
         self.make_authorization_header(param)
 
         if self.debug:
             print('Request URL = ' + request_url)
-            # print '\nBEGIN REQUEST++++++++++++++++++++++++++++++++++++'
-            # print param.get(GlacierParams.HEADERS)
         r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
         return r
 
-    def initiate_multipart_upload(self, multipard_desc, vault_name):
+    def initiate_multipart_upload(self, vault_name, multipard_desc, part_size=settings.DEFAULT_PART_SIZE):
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads' % vault_name)
-        param.make_dates()
+        # param.make_dates()
         param.set_header('x-amz-archive-description', multipard_desc)
-        param.set_header('x-amz-part-size', GlacierParams.DEFAULT_PART_SIZE)
+        param.set_header('x-amz-part-size', part_size)
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         request_url = endpoint + '?' + self.make_canonical_query_string(param)
         self.make_authorization_header(param)
@@ -176,7 +178,7 @@ class Client:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/archives' % vault_name)
-        param.make_dates()
+        # param.make_dates()
         param.set_header('Content-Length', str(os.path.getsize(file_path)))
         param.set_header('x-amz-archive-description', self.get_archive_name(file_path))
         content = open(file_path).read()
@@ -186,9 +188,8 @@ class Client:
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         request_url = endpoint + '?' + self.make_canonical_query_string(param)
         self.make_authorization_header(param)
-        # print 'Request URL = ' + request_url
-        # print param.get(GlacierParams.HEADERS)
-
+        if self.debug:
+            print('Request URL = ' + request_url)
         r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS), data=content)
         print('Response code: %d\n' % r.status_code)
         return r
@@ -199,7 +200,7 @@ class Client:
 
 
 if __name__ == '__main__':
-    c = Client()
+    c = GlacierClient('us-east-1')
     # response = c.initiate_multipart_upload('test-multipart-1','Foto')
     response = c.list_vaults()
     print(response.status_code)
