@@ -1,6 +1,7 @@
 import urllib.parse
 import datetime
 import os
+import sys
 import requests
 import settings
 
@@ -12,7 +13,6 @@ from logger import Logger
 
 
 class GlacierParams:
-
     # Static attribute names
     METHOD = 'METHOD'
     URI = 'URI'
@@ -62,10 +62,6 @@ class GlacierParams:
         t = datetime.datetime.utcnow()
         self.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
         self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
-
-
-class InvalidRegionException(Exception):
-    pass
 
 
 class GlacierClient:
@@ -141,10 +137,10 @@ class GlacierClient:
         """The signing information can be either in a query string value or in a header named Authorization.
         Create authorization header and add to request headers"""
         authorization_header = self.signer.algorithm + ' ' + \
-            'Credential=' + self.signer.getAccessKey() + '/' + \
-            self.make_credential_scope(param) + ', ' + \
-            'SignedHeaders=' + self.make_signed_headers() + \
-            ', ' + 'Signature=' + self.make_signature(param)
+                               'Credential=' + self.signer.getAccessKey() + '/' + \
+                               self.make_credential_scope(param) + ', ' + \
+                               'SignedHeaders=' + self.make_signed_headers() + \
+                               ', ' + 'Signature=' + self.make_signature(param)
         param.set_header('Authorization', authorization_header)
         # return authorization_header
 
@@ -153,16 +149,14 @@ class GlacierClient:
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults')
         # param.make_dates()
-        endpoint = 'https://%s/-/vaults' % self.host
-        request_url = endpoint + '?' + self.make_canonical_query_string(param)
+        # endpoint = 'https://%s/-/vaults' % self.host
+        # request_url = endpoint + '?' + self.make_canonical_query_string(param)
         self.make_authorization_header(param)
 
-        if self.debug:
-            print('Request URL = ' + request_url)
-        self.logger.log_request(param.get(GlacierParams.HEADERS))
-        r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
-        self.logger.log_response(r.headers)
-        return r
+        # self.logger.log_request(param.get(GlacierParams.HEADERS))
+        # r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
+        # self.logger.log_response(r.headers)
+        return self.perform_request(param)
 
     def initiate_multipart_upload(self, vault_name, multipard_desc, part_size=settings.DEFAULT_PART_SIZE):
         param = GlacierParams()
@@ -171,13 +165,13 @@ class GlacierClient:
         # param.make_dates()
         param.set_header('x-amz-archive-description', multipard_desc)
         param.set_header('x-amz-part-size', part_size)
-        endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
-        request_url = endpoint + '?' + self.make_canonical_query_string(param)
-        self.make_authorization_header(param)
-        if self.debug:
-            print('Request URL = ' + request_url)
-        r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS))
-        return r
+        # endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
+        # request_url = endpoint + '?' + self.make_canonical_query_string(param)
+        # self.make_authorization_header(param)
+        # if self.debug:
+        #     print('Request URL = ' + request_url)
+        # r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS))
+        return self.perform_request(param)
 
     def upload_archive(self, file_path, vault_name):
         param = GlacierParams()
@@ -190,18 +184,53 @@ class GlacierClient:
         param.set(GlacierParams.PAYLOAD, content)
         param.set_header('x-amz-content-sha256', self.signer.hashHex(content))
         param.set_header('x-amz-sha256-tree-hash', self.signer.treeHash(file_path))
+        # endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
+        # request_url = endpoint + '?' + self.make_canonical_query_string(param)
+        # self.make_authorization_header(param)
+        # if self.debug:
+        #     print('Request URL = ' + request_url)
+        # r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS), data=content)
+        # print('Response code: %d\n' % r.status_code)
+        return self.perform_request(param)
+
+    def perform_request(self, param):
+        method = param.get(GlacierParams.METHOD)
+        request_headers = param.get(GlacierParams.HEADERS)
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         request_url = endpoint + '?' + self.make_canonical_query_string(param)
-        self.make_authorization_header(param)
         if self.debug:
             print('Request URL = ' + request_url)
-        r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS), data=content)
-        print('Response code: %d\n' % r.status_code)
-        return r
+        try:
+            if method == 'POST':
+                response = requests.post(request_url, headers=request_headers, data=param.get(GlacierParams.PAYLOAD))
+            elif method == 'GET':
+                response = requests.get(request_url, headers=request_headers)
+            elif method == 'PUT':
+                pass
+            elif method == 'DELETE':
+                pass
+            else:
+                raise InvalidMethodException("Invalid method %s" % method)
+            request_headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
+            self.logger.log_response(response.headers)
+        except:
+            sys.stderr.write("Unable to perform request")
+            response = None
+        finally:
+            self.logger.log_request(request_headers)
+        return response
 
     def get_archive_name(self, file_path):
         """returns the archive name from the file path"""
         return os.path.basename(file_path)
+
+
+class InvalidRegionException(Exception):
+    pass
+
+
+class InvalidMethodException(Exception):
+    pass
 
 
 if __name__ == '__main__':
@@ -209,5 +238,6 @@ if __name__ == '__main__':
     # response = c.initiate_multipart_upload('test-multipart-1','Foto')
     response = c.list_vaults()
     print(response.status_code)
-    print(response.text)
+    #print(response.text)
+    # print(response.encoding)
     print(response.headers)
