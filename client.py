@@ -5,6 +5,7 @@ import requests
 import settings
 
 from aws_libs import Signer
+from logger import Logger
 
 # see https://github.com/shazow/urllib3/issues/497#issuecomment-66942891 to understand the following line
 # requests.packages.urllib3.disable_warnings()
@@ -70,6 +71,8 @@ class InvalidRegionException(Exception):
 class GlacierClient:
     def __init__(self, region='us-east-1', debug=False):
         self.signer = Signer()
+        print(os.getcwd())
+        self.logger = Logger('database.db')
         # self.service 			= 'glacier'
         if region in settings.REGIONS:
             self.region = region
@@ -156,7 +159,9 @@ class GlacierClient:
 
         if self.debug:
             print('Request URL = ' + request_url)
+        self.logger.log_request(param.get(GlacierParams.HEADERS))
         r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
+        self.logger.log_response(r.headers)
         return r
 
     def initiate_multipart_upload(self, vault_name, multipard_desc, part_size=settings.DEFAULT_PART_SIZE):
