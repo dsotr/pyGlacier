@@ -173,6 +173,18 @@ class GlacierClient:
         # r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS))
         return self.perform_request(param)
 
+    def upload_part(self, vault_name, upload_id, part_size, part_number, archive_chunk, archive_path):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'PUT')
+        param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
+
+        param.set_header('Content-Length',
+        param.set_header('Content-Range',
+        param.set_header('x-amz-sha256--sha256',
+        param.set_header('x-amz-sha256-tree-hash',
+
+
+
     def upload_archive(self, file_path, vault_name):
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
@@ -183,7 +195,6 @@ class GlacierClient:
         content = open(file_path).read()
         param.set(GlacierParams.PAYLOAD, content)
         param.set_header('x-amz-content-sha256', self.signer.hashHex(content))
-        param.set_header('x-amz-sha256-tree-hash', self.signer.treeHash(file_path))
         # endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         # request_url = endpoint + '?' + self.make_canonical_query_string(param)
         # self.make_authorization_header(param)

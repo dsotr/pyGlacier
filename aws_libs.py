@@ -83,3 +83,29 @@ def fileChunkGenerator(file_path, chunk_size=1048576,
         if callback_function:
             callback_function(file_path, len(data), total_size)
     raise StopIteration()
+
+
+def chunk_reader(file_path, start_position, chunk_size, subchunk_size=2**20, callback_function=None):
+    """Read <chunk_size> bytes of the input file starting from <start_position>.
+    This function calls the <callback_function> after each subchunk of data is uploaded"""
+    total_size = os.path.getsize(file_path)
+    file_object = open(file_path, 'rb')
+    file_object.seek(start_position)
+    current_position = start_position
+    while True:
+        # exit if enough data was read
+        if current_position-start_position >= chunk_size:
+            break
+        print(min(subchunk_size, start_position + chunk_size - current_position))
+        data = file_object.read(min(subchunk_size, start_position + chunk_size - current_position))
+        # print len(data)
+        if not data:
+            file_object.close()
+            break
+        yield data
+        current_position = file_object.tell()
+        print(data)
+        if callback_function:
+            callback_function(file_path, current_position - start_position, chunk_size)
+    file_object.close()
+    raise StopIteration()
