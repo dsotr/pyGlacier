@@ -5,7 +5,7 @@ import sys
 import requests
 import settings
 
-from aws_libs import Signer
+from aws_libs import Signer, chunk_reader
 from logger import Logger
 
 # see https://github.com/shazow/urllib3/issues/497#issuecomment-66942891 to understand the following line
@@ -173,15 +173,16 @@ class GlacierClient:
         # r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS))
         return self.perform_request(param)
 
-    def upload_part(self, vault_name, upload_id, part_size, part_number, archive_chunk, archive_path):
+    def upload_part(self, vault_name, upload_id, part_size, part_number, archive_path, archive_hash):
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
-
-        param.set_header('Content-Length',
-        param.set_header('Content-Range',
-        param.set_header('x-amz-sha256--sha256',
-        param.set_header('x-amz-sha256-tree-hash',
+        g=chunk_reader(archive_path, part_number*part_size, part_size, subchunk_size=2**20, callback_function=None)
+        archive_size = os.path.getsize(archive_path)
+        param.set_header('Content-Length', str(min(archive_size - part_number*part_size, part_size)))
+        param.set_header('Content-Range', "%s-%s/*" %(part_number*part_size, min(archive_size, (part_number+1)*part_size)) )
+        param.set_header('x-amz-sha256--sha256', archive_hash)
+        param.set_header('x-amz-sha256-tree-hash', part_tree_hash)
 
 
 
