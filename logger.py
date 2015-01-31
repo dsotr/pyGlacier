@@ -43,15 +43,20 @@ class Logger():
             headers text
             )'''
         )
-        self.commit_and_close()
+        self.commit_and_close(cursor)
 
     def get_cursor(self):
         self.conn = sqlite3.connect(self.database_path)
         return self.conn.cursor()
 
-    def commit_and_close(self):
-        self.conn.commit()
-        self.conn.close()
+    def commit_and_close(self, cursor):
+        cursor.connection.commit()
+        cursor.connection.close()
+
+    def get_columns(self, table_name):
+        cursor = self.get_cursor()
+        stmt = cursor.execute("PRAGMA table_info(%s)" %(table_name,))
+        return [item[1] for item in stmt.fetchall()]
 
     def log(self, table, headers):
         cursor = self.get_cursor()
@@ -60,16 +65,24 @@ class Logger():
         #sql_friendly_headers.pop('authorization')
         # add the original headers dictionary to the table
         sql_friendly_headers['headers'] = str(headers)
-        columns = ', '.join(sorted(sql_friendly_headers.keys()))
+        columns = self.get_columns(table)
+        for header in sql_friendly_headers:
+            # Add a column for each header
+            if header not in columns:
+                cursor.execute('ALTER TABLE %s ADD COLUMN %s text' %(table, header));
+        # c.execute("PRAGMA table_info(requests)")
+        sql_columns = ', '.join(sorted(sql_friendly_headers.keys()))
         placeholders = ':' + ', :'.join(sorted(sql_friendly_headers.keys()))
-
-
-        query = "INSERT INTO %s (%s) VALUES (%s)" % (table, columns, placeholders)
-        # query = r"""INSERT INTO %s (request_id, date) VALUES (:request-id, :date)""" % (table,)
+        query = "INSERT INTO %s (%s) VALUES (%s)" % (table, sql_columns, placeholders)
         print(query)
-        print(sql_friendly_headers)
-        cursor.execute(query, sql_friendly_headers)
-        self.commit_and_close()
+        # query = r"""INSERT INTO %s (request_id, date) VALUES (:request-id, :date)""" % (table,)
+        # print(query)
+        # print(sql_friendly_headers)
+        result=cursor.execute(query, sql_friendly_headers)
+        print(result)
+
+
+        self.commit_and_close(cursor)
 
     def log_request(self, headers):
         self.log('requests', headers)
@@ -78,6 +91,7 @@ class Logger():
         self.log('responses', headers)
 
 if __name__ == '__main__':
-    logger = Logger('example.db')
+    logger = Logger('database.db')
     headers = {'authorization': datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')}
     logger.log('requests', headers)
+    # print(logger.get_columns('requests'))

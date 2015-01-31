@@ -44,28 +44,33 @@ class Signer:
             print('%i %%' % (count * 100 / totlen))
         # f.close()
         # print "root built"
-        # print buildTreeFromRoot(l)[-1][0].encode("hex")
-        return buildTreeFromRoot(l)[-1][0].encode("hex")
+        # print build_tree_from_root(l)[-1][0].encode("hex")
+        return build_tree_from_root(l)[-1][0].encode("hex")
 
+    def tree_hash(self, file_path, start, bytes):
+        l = []
+        for data in chunk_reader(file_path, start, bytes):
+            l.append(hashlib.sha256(data).digest())
+        return build_tree_from_root(l)[-1][0].encode("hex")
 
-def buildTreeFromRoot(root, L=None):
+def build_tree_from_root(root, parent=None):
     # print root
-    if not L:
-        L = [root]
+    if not parent:
+        parent = [root]
     if len(root) < 2:
-        return L
-    l = []
+        return parent
+    current = []
     even = root[::2]
     odd = root[1::2] + [None]
     for e in zip(even, odd):
         if e[1]:
             h = hashlib.sha256(e[0])
             h.update(e[1])
-            l.append(h.digest())
+            current.append(h.digest())
         else:
-            l.append(e[0])
-    L.append(l)
-    return buildTreeFromRoot(l, L)
+            current.append(e[0])
+    parent.append(current)
+    return build_tree_from_root(current, parent)
 
 
 def fileChunkGenerator(file_path, chunk_size=1048576,
@@ -96,7 +101,7 @@ def chunk_reader(file_path, start_position, chunk_size, subchunk_size=2**20, cal
         # exit if enough data was read
         if current_position-start_position >= chunk_size:
             break
-        print(min(subchunk_size, start_position + chunk_size - current_position))
+        # print(min(subchunk_size, start_position + chunk_size - current_position))
         data = file_object.read(min(subchunk_size, start_position + chunk_size - current_position))
         # print len(data)
         if not data:
@@ -104,7 +109,7 @@ def chunk_reader(file_path, start_position, chunk_size, subchunk_size=2**20, cal
             break
         yield data
         current_position = file_object.tell()
-        print(data)
+        # print(data)
         if callback_function:
             callback_function(file_path, current_position - start_position, chunk_size)
     file_object.close()

@@ -171,6 +171,7 @@ class GlacierClient:
         # if self.debug:
         #     print('Request URL = ' + request_url)
         # r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS))
+        self.make_authorization_header(param)
         return self.perform_request(param)
 
     def upload_part(self, vault_name, upload_id, part_size, part_number, archive_path, archive_hash):
@@ -182,9 +183,14 @@ class GlacierClient:
         param.set_header('Content-Length', str(min(archive_size - part_number*part_size, part_size)))
         param.set_header('Content-Range', "%s-%s/*" %(part_number*part_size, min(archive_size, (part_number+1)*part_size)) )
         param.set_header('x-amz-sha256--sha256', archive_hash)
-        param.set_header('x-amz-sha256-tree-hash', part_tree_hash)
+        #param.set_header('x-amz-sha256-tree-hash', part_tree_hash)
 
-
+    def multiupload_archive(self, vault_name, archive_path):
+        init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
+        # archive_id = init_req.headers.get('x-amz-multipart-upload-id')
+        # location = init_req.headers.get('Location')
+        # print(archive_id, location)
+        return init_resp
 
     def upload_archive(self, file_path, vault_name):
         param = GlacierParams()
