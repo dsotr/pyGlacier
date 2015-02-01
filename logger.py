@@ -46,8 +46,8 @@ class Logger():
         self.commit_and_close(cursor)
 
     def get_cursor(self):
-        self.conn = sqlite3.connect(self.database_path)
-        return self.conn.cursor()
+        conn = sqlite3.connect(self.database_path)
+        return conn.cursor()
 
     def commit_and_close(self, cursor):
         cursor.connection.commit()
@@ -61,10 +61,10 @@ class Logger():
     def log(self, table, headers):
         cursor = self.get_cursor()
         sql_friendly_headers = convert_dict_keys_to_alphanum(headers)
-        ####temp#######
-        #sql_friendly_headers.pop('authorization')
         # add the original headers dictionary to the table
         sql_friendly_headers['headers'] = str(headers)
+        # add current timestamp
+        sql_friendly_headers['record_date'] = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
         columns = self.get_columns(table)
         for header in sql_friendly_headers:
             # Add a column for each header
