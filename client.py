@@ -1,67 +1,12 @@
 import urllib.parse
-import datetime
 import os
 import sys
 import requests
 import settings
+from settings import GlacierParams
 
 from aws_libs import Signer, chunk_reader
 from logger import Logger
-
-# see https://github.com/shazow/urllib3/issues/497#issuecomment-66942891 to understand the following line
-# requests.packages.urllib3.disable_warnings()
-
-
-class GlacierParams:
-    # Static attribute names
-    METHOD = 'METHOD'
-    URI = 'URI'
-    REQ_PARAM = 'REQ_PARAM'
-    HEADERS = 'HEADERS'
-    PAYLOAD = 'PAYLOAD'
-    AMZDATETIME = 'AMZDATETIME'
-    DATE = 'DATE'
-
-    def __init__(self):
-        """
-        This class stores the parameters needed by the GlacierClient methods. It's basically a dictionary.
-        """
-        self.params = dict()
-        self.params[GlacierParams.REQ_PARAM] = dict()
-        self.params[GlacierParams.HEADERS] = dict()
-        self.params[GlacierParams.PAYLOAD] = ''.encode('utf-8')
-        self.make_dates()
-
-    def set(self, key, value):
-        # key should be one of the static variables listed above
-        self.params[key] = value
-
-    def set_header(self, key, value):
-        # key should be one of the static variables listed above
-        self.add_to_dict(GlacierParams.HEADERS, key, value)
-
-    def get(self, key):
-        return self.params.get(key, None)
-
-    def update_params(self, d):
-        self.params.update(d)
-
-    def replace_params(self, d):
-        self.params = d
-
-    def get_params(self):
-        return self.params
-
-    def add_to_dict(self, key, dict_key, dict_value):
-        """updates a dictionary (accessed through the first key) with the
-        supplied key/value pair, creating a new dictionary if needed"""
-        self.params.setdefault(key, {})[dict_key] = dict_value
-
-    def make_dates(self):
-        """Create a date for headers and the credential string"""
-        t = datetime.datetime.utcnow()
-        self.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
-        self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
 
 
 class GlacierClient:
@@ -187,9 +132,9 @@ class GlacierClient:
 
     def multiupload_archive(self, vault_name, archive_path):
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
-        # archive_id = init_req.headers.get('x-amz-multipart-upload-id')
-        # location = init_req.headers.get('Location')
-        # print(archive_id, location)
+        archive_id = init_resp.headers.get('x-amz-multipart-upload-id')
+        location = init_resp.headers.get('Location')
+        print(archive_id, location)
         return init_resp
 
     def upload_archive(self, file_path, vault_name):
@@ -216,8 +161,10 @@ class GlacierClient:
         request_headers = param.get(GlacierParams.HEADERS)
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         request_url = endpoint + '?' + self.make_canonical_query_string(param)
+        response = None
         if self.debug:
             print('Request URL = ' + request_url)
+        # Perform request and get response
         try:
             if method == 'POST':
                 response = requests.post(request_url, headers=request_headers, data=param.get(GlacierParams.PAYLOAD))
@@ -229,13 +176,17 @@ class GlacierClient:
                 pass
             else:
                 raise InvalidMethodException("Invalid method %s" % method)
-            request_headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
-            self.logger.log_response(response.headers)
         except:
             sys.stderr.write("Unable to perform request")
             response = None
+        # Log request / response
+        try:
+            request_headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
+            self.logger.log_response(response.headers, param)
+        except:
+            sys.stderr.write("Unable to log response")
         finally:
-            self.logger.log_request(request_headers)
+            self.logger.log_request(request_headers, param)
         return response
 
     def get_archive_name(self, file_path):

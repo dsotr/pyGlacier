@@ -1,13 +1,13 @@
 import sqlite3
+from settings import GlacierParams
 import datetime
-import datetime
+
 
 def convert_dict_keys_to_alphanum(source_dict):
     return dict(map(
         lambda x: (x[0].lower().replace('-', '_'), x[1]),
         source_dict.items())
     )
-
 
 
 class Logger():
@@ -55,21 +55,25 @@ class Logger():
 
     def get_columns(self, table_name):
         cursor = self.get_cursor()
-        stmt = cursor.execute("PRAGMA table_info(%s)" %(table_name,))
+        stmt = cursor.execute("PRAGMA table_info(%s)" % (table_name,))
         return [item[1] for item in stmt.fetchall()]
 
-    def log(self, table, headers):
+    def log(self, table, headers, param):
         cursor = self.get_cursor()
         sql_friendly_headers = convert_dict_keys_to_alphanum(headers)
         # add the original headers dictionary to the table
         sql_friendly_headers['headers'] = str(headers)
         # add current timestamp
         sql_friendly_headers['record_date'] = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+        # add target url
+        sql_friendly_headers['url'] = param.get(GlacierParams.URI)
+        # add request method
+        sql_friendly_headers['method'] = param.get(GlacierParams.METHOD)
         columns = self.get_columns(table)
         for header in sql_friendly_headers:
             # Add a column for each header
             if header not in columns:
-                cursor.execute('ALTER TABLE %s ADD COLUMN %s text' %(table, header));
+                cursor.execute('ALTER TABLE %s ADD COLUMN %s text' % (table, header))
         # c.execute("PRAGMA table_info(requests)")
         sql_columns = ', '.join(sorted(sql_friendly_headers.keys()))
         placeholders = ':' + ', :'.join(sorted(sql_friendly_headers.keys()))
@@ -78,17 +82,17 @@ class Logger():
         # query = r"""INSERT INTO %s (request_id, date) VALUES (:request-id, :date)""" % (table,)
         # print(query)
         # print(sql_friendly_headers)
-        result=cursor.execute(query, sql_friendly_headers)
-        print(result)
-
-
+        result = cursor.execute(query, sql_friendly_headers)
+        # print(result)
         self.commit_and_close(cursor)
+        return result
 
-    def log_request(self, headers):
-        self.log('requests', headers)
+    def log_request(self, headers, param):
+        return self.log('requests', headers, param)
 
-    def log_response(self, headers):
-        self.log('responses', headers)
+    def log_response(self, headers, param):
+        return self.log('responses', headers, param)
+
 
 if __name__ == '__main__':
     logger = Logger('database.db')

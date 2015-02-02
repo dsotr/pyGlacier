@@ -1,4 +1,5 @@
 # coding=utf-8
+import datetime
 
 # Available glacier regions
 REGIONS = {
@@ -17,3 +18,54 @@ API_VERSION = '2012-06-01'
 SERVICE = 'glacier'
 # Default size of each part in a multipart upload
 DEFAULT_PART_SIZE = str(2 ** (20 + 8))  # 268435456 = 256Mb
+
+class GlacierParams:
+    # Static attribute names
+    METHOD = 'METHOD'
+    URI = 'URI'
+    REQ_PARAM = 'REQ_PARAM'
+    HEADERS = 'HEADERS'
+    PAYLOAD = 'PAYLOAD'
+    AMZDATETIME = 'AMZDATETIME'
+    DATE = 'DATE'
+
+    def __init__(self):
+        """
+        This class stores the parameters needed by the GlacierClient methods. It's basically a dictionary.
+        """
+        self.params = dict()
+        self.params[GlacierParams.REQ_PARAM] = dict()
+        self.params[GlacierParams.HEADERS] = dict()
+        self.params[GlacierParams.PAYLOAD] = ''.encode('utf-8')
+        self.make_dates()
+
+    def set(self, key, value):
+        # key should be one of the static variables listed above
+        self.params[key] = value
+
+    def set_header(self, key, value):
+        # key should be one of the static variables listed above
+        self.add_to_dict(GlacierParams.HEADERS, key, value)
+
+    def get(self, key):
+        return self.params.get(key, None)
+
+    def update_params(self, d):
+        self.params.update(d)
+
+    def replace_params(self, d):
+        self.params = d
+
+    def get_params(self):
+        return self.params
+
+    def add_to_dict(self, key, dict_key, dict_value):
+        """updates a dictionary (accessed through the first key) with the
+        supplied key/value pair, creating a new dictionary if needed"""
+        self.params.setdefault(key, {})[dict_key] = dict_value
+
+    def make_dates(self):
+        """Create a date for headers and the credential string"""
+        t = datetime.datetime.utcnow()
+        self.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
+        self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
