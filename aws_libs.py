@@ -47,11 +47,20 @@ class Signer:
         # print build_tree_from_root(l)[-1][0].encode("hex")
         return build_tree_from_root(l)[-1][0].encode("hex")
 
-    def tree_hash(self, file_path, start, bytes):
-        l = []
-        for data in chunk_reader(file_path, start, bytes):
-            l.append(hashlib.sha256(data).digest())
-        return build_tree_from_root(l)[-1][0].encode("hex")
+
+def tree_hash(file_path, start, bytes_number):
+    """
+    Evaluates the amazon tree hash of a portion of a file
+    :rtype : string
+    :param file_path: path of the file to hash
+    :param start: starting position of the file chunk to hash
+    :param bytes_number: size in bytes of the chunk (taken from the starting position)
+    :return: the tree hash of the required part
+    """
+    l = []
+    for data in chunk_reader(file_path, start, bytes_number, callback_function=None):
+        l.append(hashlib.sha256(data).digest())
+    return build_tree_from_root(l)[-1][0].encode("hex")
 
 def build_tree_from_root(root, parent=None):
     # print root

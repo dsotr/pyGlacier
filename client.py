@@ -5,7 +5,7 @@ import requests
 import settings
 from settings import GlacierParams
 
-from aws_libs import Signer, chunk_reader
+from aws_libs import Signer, chunk_reader, tree_hash
 from logger import Logger
 
 
@@ -123,12 +123,13 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
-        g=chunk_reader(archive_path, part_number*part_size, part_size, subchunk_size=2**20, callback_function=None)
+        g = chunk_reader(archive_path, part_number*part_size, part_size, subchunk_size=2**20, callback_function=None)
         archive_size = os.path.getsize(archive_path)
         param.set_header('Content-Length', str(min(archive_size - part_number*part_size, part_size)))
         param.set_header('Content-Range', "%s-%s/*" %(part_number*part_size, min(archive_size, (part_number+1)*part_size)) )
         param.set_header('x-amz-sha256--sha256', archive_hash)
-        #param.set_header('x-amz-sha256-tree-hash', part_tree_hash)
+        part_tree_hash = tree_hash(archive_path, part_number*part_size, part_size)
+        param.set_header('x-amz-sha256-tree-hash', part_tree_hash)
 
     def multiupload_archive(self, vault_name, archive_path):
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
