@@ -1,3 +1,4 @@
+import codecs
 import sys, os, hashlib, hmac
 
 
@@ -60,7 +61,9 @@ def tree_hash(file_path, start, bytes_number):
     l = []
     for data in chunk_reader(file_path, start, bytes_number, callback_function=None):
         l.append(hashlib.sha256(data).digest())
-    return build_tree_from_root(l)[-1][0].encode("hex")
+    #return build_tree_from_root(l)[-1][0].encode("hex")
+    tree_hash_root = build_tree_from_root(l)[-1][0]
+    return codecs.encode(tree_hash_root, 'hex').decode()
 
 def build_tree_from_root(root, parent=None):
     # print root
