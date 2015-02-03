@@ -78,7 +78,7 @@ class Logger():
         sql_columns = ', '.join(sorted(sql_friendly_headers.keys()))
         placeholders = ':' + ', :'.join(sorted(sql_friendly_headers.keys()))
         query = "INSERT INTO %s (%s) VALUES (%s)" % (table, sql_columns, placeholders)
-        print(query)
+        # print(query)
         # query = r"""INSERT INTO %s (request_id, date) VALUES (:request-id, :date)""" % (table,)
         # print(query)
         # print(sql_friendly_headers)

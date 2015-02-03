@@ -107,15 +107,8 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads' % vault_name)
-        # param.make_dates()
         param.set_header('x-amz-archive-description', multipard_desc)
         param.set_header('x-amz-part-size', part_size)
-        # endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
-        # request_url = endpoint + '?' + self.make_canonical_query_string(param)
-        # self.make_authorization_header(param)
-        # if self.debug:
-        #     print('Request URL = ' + request_url)
-        # r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS))
         self.make_authorization_header(param)
         return self.perform_request(param)
 
@@ -139,7 +132,7 @@ class GlacierClient:
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
         archive_id = init_resp.headers.get('x-amz-multipart-upload-id')
         location = init_resp.headers.get('Location')
-        print(archive_id, location)
+        # print(archive_id, location)
         return init_resp
 
     def upload_archive(self, file_path, vault_name):
