@@ -18,7 +18,4 @@ class TestGlacierClient(TestCase):
         response = c.multiupload_archive('Foto', 'test-upload.txt')
         self.assertIn('x-amz-multipart-upload-id', response.headers)
         self.assertIn('Location', response.headers)
-        # print(response.headers)
         print("PASSED: Multiupload archive")
-        # self.fail()
-        # pass
