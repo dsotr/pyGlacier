@@ -1,5 +1,5 @@
 import codecs
-import sys, os, hashlib, hmac
+import sys, os, hashlib, hmac, codecs
 
 
 class Signer:
@@ -63,7 +63,8 @@ def tree_hash(file_path, start, bytes_number):
         l.append(hashlib.sha256(data).digest())
     #return build_tree_from_root(l)[-1][0].encode("hex")
     tree_hash_root = build_tree_from_root(l)[-1][0]
-    return codecs.encode(tree_hash_root, 'hex').decode()
+    return tree_hash_root
+    # return codecs.encode(tree_hash_root, 'hex').decode()
 
 def build_tree_from_root(root, parent=None):
     # print root
@@ -84,6 +85,8 @@ def build_tree_from_root(root, parent=None):
     parent.append(current)
     return build_tree_from_root(current, parent)
 
+def bytes_to_hex(b_str):
+    return codecs.encode(b_str, 'hex').decode()
 
 def fileChunkGenerator(file_path, chunk_size=1048576,
                        callback_function=None):  # =lambda x,y,z: sys.stdout.write(str(float(y)/z)+'\n') ): # 1048576 = 1Mb

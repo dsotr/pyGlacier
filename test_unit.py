@@ -9,7 +9,7 @@ class TestTree_hash(TestCase):
         file_path = "aws_libs.py"
         out_j = Popen(['java', 'TreeHashExample', file_path], stdout=PIPE)
         out_p = tree_hash(file_path, 0, os.path.getsize(file_path))
-        self.assertEqual(out_j.stdout.read().decode(), out_p)
+        self.assertEqual(out_j.stdout.read().decode(), bytes_to_hex(out_p))
         print("PASSED: tree hash")
 
 class TestGlacierClient(TestCase):

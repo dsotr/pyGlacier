@@ -112,8 +112,14 @@ class GlacierClient:
         self.make_authorization_header(param)
         return self.perform_request(param)
 
-    def complete_multipart_upload(self, vault_name, upload_id, archive_size):
-        pass
+    def complete_multipart_upload(self, vault_name, upload_id, archive_size, archive_tree_hash):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'PUT')
+        param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
+        param.set_header('x-amz-archive-size', archive_size)
+        param.set_header('x-amz-sha256-tree-hash​', archive_tree_hash)
+        self.make_authorization_header(param)
+        return self.perform_request(param)
 
     def upload_part(self, vault_name, upload_id, part_size, part_number, archive_path, archive_hash):
         param = GlacierParams()
