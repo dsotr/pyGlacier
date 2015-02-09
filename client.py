@@ -164,6 +164,8 @@ class GlacierClient:
             print("Parts hashes: \n%s" % '\n'.join(part_hex_hashes))
         for i in range(len(part_hex_hashes)):
             self.upload_part(vault_name, upload_id, part_size, i, archive_path, archive_hash, part_hex_hashes[i])
+        self.complete_multipart_upload(TBD...)
+
         return init_resp
 
     def upload_archive(self, file_path, vault_name):
