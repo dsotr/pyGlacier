@@ -135,7 +135,8 @@ class GlacierClient:
         param.set_header('x-amz-content-sha256', archive_hash)
         # part_tree_hash = tree_hash(archive_path, part_number*part_size, part_size)
         param.set_header('x-amz-sha256-tree-hash', part_tree_hash)
-        return part_tree_hash
+        self.make_authorization_header(param)
+        return self.perform_request(param)
 
     def multiupload_archive(self, vault_name, archive_path):
         # initiate multipart upload
@@ -156,17 +157,21 @@ class GlacierClient:
             part_bytes_hashes[part_number] = tree_hash(archive_path, start_byte, part_size)
             part_number += 1
             start_byte += part_size
-        archive_hash = bytes_to_hex(build_tree_from_root(part_bytes_hashes)[-1][0])
+        archive_tree_hash = bytes_to_hex(build_tree_from_root(part_bytes_hashes)[-1][0])
         part_hex_hashes = list(map(bytes_to_hex, part_bytes_hashes))
         if self.debug:
             print("Hash calculation complete.")
-            print("Archive hash: %s" % archive_hash)
+            print("Archive hash: %s" % archive_tree_hash)
             print("Parts hashes: \n%s" % '\n'.join(part_hex_hashes))
         for i in range(len(part_hex_hashes)):
-            self.upload_part(vault_name, upload_id, part_size, i, archive_path, archive_hash, part_hex_hashes[i])
-        self.complete_multipart_upload(TBD...)
-
-        return init_resp
+            part_resp = self.upload_part(vault_name, upload_id, part_size, i,
+                                         archive_path, archive_tree_hash, part_hex_hashes[i])
+            if self.debug:
+                print(part_resp)
+        compl_resp = self.complete_multipart_upload(vault_name, upload_id, archive_size, archive_tree_hash)
+        if self.debug:
+            print(compl_resp)
+        return compl_resp
 
     def upload_archive(self, file_path, vault_name):
         param = GlacierParams()
