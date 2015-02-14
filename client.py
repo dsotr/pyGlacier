@@ -1,3 +1,5 @@
+# -*- coding: latin-1 -*-
+
 import urllib.parse
 import os
 import sys

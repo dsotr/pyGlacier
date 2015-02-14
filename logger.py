@@ -1,3 +1,5 @@
+# -*- coding: latin-1 -*-
+
 import sqlite3
 from settings import GlacierParams
 import datetime

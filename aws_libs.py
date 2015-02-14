@@ -1,3 +1,5 @@
+# -*- coding: latin-1 -*-
+
 import codecs
 import sys, os, hashlib, hmac, codecs
 

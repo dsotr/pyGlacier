@@ -1,3 +1,5 @@
+# -*- coding: latin-1 -*-
+
 from client import GlacierClient
 from unittest import TestCase
 from aws_libs import *

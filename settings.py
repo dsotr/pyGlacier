@@ -1,4 +1,5 @@
-# coding=utf-8
+# -*- coding: latin-1 -*-
+
 import datetime, sys
 
 # Available glacier regions
