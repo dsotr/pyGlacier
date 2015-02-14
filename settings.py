@@ -1,5 +1,5 @@
 # coding=utf-8
-import datetime
+import datetime, sys
 
 # Available glacier regions
 REGIONS = {
@@ -69,3 +69,8 @@ class GlacierParams:
         t = datetime.datetime.utcnow()
         self.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
         self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
+
+def progress_bar(title):
+    def progress(x,y,z):
+        print(title, str(float(y)/z), '\n', sep=' ', flush=True)
+    return progress

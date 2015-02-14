@@ -126,8 +126,9 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
-        g = chunk_reader(archive_path, part_number * part_size, part_size, subchunk_size=2 ** 20,
-                         callback_function=None)
+        g = chunk_reader(archive_path, part_number * part_size, part_size, subchunk_size=settings.DEFAULT_PART_SIZE,
+            callback_function=settings.progress_bar("File %s - chunk %i" %(os.path.basename(archive_path), part_number)))
+        param.set(GlacierParams.PAYLOAD, g)
         archive_size = os.path.getsize(archive_path)
         param.set_header('Content-Length', str(min(archive_size - part_number * part_size, part_size)))
         param.set_header('Content-Range', "%s-%s/*"
