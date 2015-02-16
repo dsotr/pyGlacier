@@ -1,6 +1,5 @@
 # -*- coding: latin-1 -*-
 
-import codecs
 import sys, os, hashlib, hmac, codecs
 
 
@@ -88,7 +87,7 @@ def build_tree_from_root(root, parent=None):
     return build_tree_from_root(current, parent)
 
 def bytes_to_hex(b_str):
-    return codecs.encode(b_str, 'hex').decode()
+    return codecs.encode(b_str, 'hex_codec').decode()
 
 def fileChunkGenerator(file_path, chunk_size=1048576,
                        callback_function=None):  # =lambda x,y,z: sys.stdout.write(str(float(y)/z)+'\n') ): # 1048576 = 1Mb

@@ -242,7 +242,7 @@ class InvalidMethodException(Exception):
 
 
 if __name__ == '__main__':
-    c = GlacierClient('us-east-1', debug=1)
+    c = GlacierClient('us-east-1', debug=True)
     file_path = "Downloads.tar"
     c.multiupload_archive('Foto', file_path)
     # response = c.initiate_multipart_upload('test-multipart-1','Foto')
