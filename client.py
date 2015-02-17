@@ -7,7 +7,7 @@ import requests
 import settings
 from settings import GlacierParams
 
-from aws_libs import Signer, chunk_reader, tree_hash, bytes_to_hex, build_tree_from_root
+from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root
 from logger import Logger
 
 
@@ -46,7 +46,7 @@ class GlacierClient:
                                        self.make_canonical_query_string(param),
                                        self.make_canonical_headers(param),
                                        self.make_signed_headers(),
-                                       self.signer.hashHex(param.get(GlacierParams.PAYLOAD)),
+                                       self.signer.hashHex(param.get(GlacierParams.PAYLOAD).get_data()),
         ]
         if self.debug:
             print('Canonical String\n' + '\n'.join(canonical_request_content) + '\n******************')
@@ -128,8 +128,9 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
-        g = chunk_reader(archive_path, part_number * part_size, part_size, subchunk_size=settings.DEFAULT_PART_SIZE,
-            callback_function=settings.progress_bar("File %s - chunk %i" %(os.path.basename(archive_path), part_number)))
+        g = ChunkReader(archive_path, part_number * part_size, part_size, subchunk_size=settings.DEFAULT_PART_SIZE,
+                        callback_function=settings.progress_bar(
+                            "File %s - chunk %i" % (os.path.basename(archive_path), part_number)))
         param.set(GlacierParams.PAYLOAD, g)
         archive_size = os.path.getsize(archive_path)
         param.set_header('Content-Length', str(min(archive_size - part_number * part_size, part_size)))
@@ -183,9 +184,9 @@ class GlacierClient:
         # param.make_dates()
         param.set_header('Content-Length', str(os.path.getsize(file_path)))
         param.set_header('x-amz-archive-description', self.get_archive_name(file_path))
-        content = open(file_path).read()
+        content = ChunkReader(file_path, 0, os.path.getsize(file_path), os.path.getsize(file_path))
         param.set(GlacierParams.PAYLOAD, content)
-        param.set_header('x-amz-content-sha256', self.signer.hashHex(content))
+        param.set_header('x-amz-content-sha256', self.signer.hashHex(content.get_data()))
         # endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         # request_url = endpoint + '?' + self.make_canonical_query_string(param)
         # self.make_authorization_header(param)
@@ -206,7 +207,8 @@ class GlacierClient:
         # Perform request and get response
         try:
             if method == 'POST':
-                response = requests.post(request_url, headers=request_headers, data=param.get(GlacierParams.PAYLOAD))
+                response = requests.post(request_url, headers=request_headers,
+                                         data=param.get(GlacierParams.PAYLOAD).get_chunk_generator())
             elif method == 'GET':
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
