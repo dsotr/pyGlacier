@@ -1,6 +1,6 @@
 # -*- coding: latin-1 -*-
 
-import sys, os, hashlib, hmac, codecs
+import sys, os, hashlib, hmac, codecs, settings
 
 
 class Signer:
@@ -60,7 +60,7 @@ def tree_hash(file_path, start, bytes_number):
     :return: the tree hash of the required part
     """
     l = []
-    reader = ChunkReader(file_path, start, bytes_number, callback_function=None)
+    reader = ChunkReader(file_path, start, bytes_number, callback_function=settings.progress_bar("Tree hash"))
     g = reader.get_chunk_generator()
     for data in g:
         l.append(hashlib.sha256(data).digest())
