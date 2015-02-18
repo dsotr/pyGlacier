@@ -1,6 +1,6 @@
 # -*- coding: latin-1 -*-
 
-import datetime, sys
+import datetime, time
 
 # Available glacier regions
 REGIONS = {
@@ -73,5 +73,5 @@ class GlacierParams:
 
 def progress_bar(title):
     def progress(x,y,z):
-        print(title, str(float(y)/z), '\n', sep=' ', flush=True)
+        print(title, "%0.1f" % (float(y)/z*100), '%', sep=' ', flush=True)
     return progress

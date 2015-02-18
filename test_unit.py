@@ -14,11 +14,11 @@ class TestTree_hash(TestCase):
         self.assertEqual(out_j.stdout.read().decode(), bytes_to_hex(out_p))
         print("PASSED: tree hash")
 
-class TestGlacierClient(TestCase):
-    def test_multiupload_archive(self):
-        c = GlacierClient()
-        file_path = "Downloads.tar"
-        response = c.multiupload_archive('Foto', file_path)
-        self.assertIn('x-amz-multipart-upload-id', response.headers)
-        self.assertIn('Location', response.headers)
-        print("PASSED: Multiupload archive")
+# class TestGlacierClient(TestCase):
+    # def test_multiupload_archive(self):
+    #     c = GlacierClient()
+    #     file_path = "Downloads.tar"
+    #     response = c.multiupload_archive('Foto', file_path)
+    #     self.assertIn('x-amz-multipart-upload-id', response.headers)
+    #     self.assertIn('Location', response.headers)
+    #     print("PASSED: Multiupload archive")
