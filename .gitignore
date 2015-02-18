@@ -7,4 +7,9 @@ __pycache__/
 
 #testfiles
 test-upload.txt
+<<<<<<< HEAD
 Downloads.tar2014_12_21_Comple_Dani.tar
+=======
+Downloads.tar
+database.db
+>>>>>>> f1f4af271ab45668556ea838f02f2b06a5665b39

@@ -1,6 +1,7 @@
 # -*- coding: latin-1 -*-
 
 import datetime, time
+from aws_libs import ChunkReader
 
 # Available glacier regions
 REGIONS = {
@@ -37,7 +38,7 @@ class GlacierParams:
         self.params = dict()
         self.params[GlacierParams.REQ_PARAM] = dict()
         self.params[GlacierParams.HEADERS] = dict()
-        self.params[GlacierParams.PAYLOAD] = ''.encode('utf-8')
+        self.params[GlacierParams.PAYLOAD] = ChunkReader(None, 0, 0)
         self.make_dates()
 
     def set(self, key, value):
@@ -73,5 +74,5 @@ class GlacierParams:
 
 def progress_bar(title):
     def progress(x,y,z):
-        print(title, "%0.1f" % (float(y)/z*100), '%', sep=' ', flush=True)
+        print(title, "%0.1f" % (float(y)/z*100), '%', sep=' ', end='\r', flush=True)
     return progress
