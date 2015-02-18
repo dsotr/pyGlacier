@@ -115,7 +115,7 @@ class ChunkReader():
     def __init__(self, file_path, start_position, chunk_size, subchunk_size=2**20, callback_function=None):
         self.file_path = file_path
         self.start_position = start_position
-        if chunk_size < 1:
+        if chunk_size < 1 and self.file_path:
             self.chunk_size = os.path.getsize(file_path)
         else:
             self.chunk_size = chunk_size
@@ -126,6 +126,8 @@ class ChunkReader():
         """Return a generator that reads <chunk_size> bytes of the input file starting from <start_position>.
         This function calls the <callback_function> after each subchunk of data is generated"""
         def chunk_generator():
+            if not self.file_path:
+                raise StopIteration()
             total_size = os.path.getsize(self.file_path)
             file_object = open(self.file_path, 'rb')
             file_object.seek(self.start_position)
