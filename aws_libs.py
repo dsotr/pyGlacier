@@ -150,6 +150,8 @@ class ChunkReader():
         return chunk_generator()
 
     def get_data(self):
+        if not self.file_path:
+            return ""
         file_object = open(self.file_path, 'rb')
         file_object.seek(self.start_position)
         data = file_object.read(self.chunk_size)
