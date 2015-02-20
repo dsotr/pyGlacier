@@ -32,7 +32,7 @@ class Signer:
         kSigning = self.sign(kService, 'aws4_request')
         return kSigning
 
-    def hashHex(self, content):
+    def hashHex(self, content: str):
         return hashlib.sha256(content).hexdigest()
 
     def treeHash(self, file_path):
@@ -125,8 +125,10 @@ class ChunkReader():
     def get_chunk_generator(self):
         """Return a generator that reads <chunk_size> bytes of the input file starting from <start_position>.
         This function calls the <callback_function> after each subchunk of data is generated"""
+        #         return ''
         def chunk_generator():
             if not self.file_path:
+                yield b""
                 raise StopIteration()
             total_size = os.path.getsize(self.file_path)
             file_object = open(self.file_path, 'rb')
@@ -153,7 +155,7 @@ class ChunkReader():
 
     def get_data(self):
         if not self.file_path:
-            return ""
+            return b""
         file_object = open(self.file_path, 'rb')
         file_object.seek(self.start_position)
         data = file_object.read(self.chunk_size)

@@ -6,6 +6,7 @@ import sys
 import requests
 import settings
 from settings import GlacierParams
+import json
 
 from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root
 from logger import Logger
@@ -146,6 +147,8 @@ class GlacierClient:
         # initiate multipart upload
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
         upload_id = init_resp.headers.get('x-amz-multipart-upload-id')
+        print(init_resp.content.decode().replace('\\\\n', '\n'))
+        return init_resp
         # location = init_resp.headers.get('Location')
         # Setup tree hashes for archive parts
         archive_size = os.path.getsize(archive_path)
