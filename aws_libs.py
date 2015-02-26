@@ -1,6 +1,6 @@
 # -*- coding: latin-1 -*-
 
-import sys, os, hashlib, hmac, codecs, settings
+import sys, os, hashlib, hmac, codecs, logging
 
 
 class Signer:
@@ -9,7 +9,7 @@ class Signer:
         self.access_key = os.environ.get('AWS_ACCESS_KEY_ID')
         self.secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
         if self.access_key is None or self.secret_key is None:
-            print('No access key is available.')
+            logging.critical('No access key is available.')
             sys.exit()
         self.algorithm = 'AWS4-HMAC-SHA256'
 
@@ -43,7 +43,7 @@ class Signer:
         for data in fileChunkGenerator(file_path):
             l.append(hashlib.sha256(data).digest())
             count += len(data)
-            print('%i %%' % (count * 100 / totlen))
+            logging.info('%i %%' % (count * 100 / totlen))
         # f.close()
         # print "root built"
         # print build_tree_from_root(l)[-1][0].encode("hex")
@@ -60,14 +60,15 @@ def tree_hash(file_path, start, bytes_number):
     :return: the tree hash of the required part
     """
     l = []
-    reader = ChunkReader(file_path, start, bytes_number, callback_function=settings.progress_bar("Tree hash"))
+    reader = ChunkReader(file_path, start, bytes_number, callback_function=progress_bar("Tree hash"))
     g = reader.get_chunk_generator()
     for data in g:
         l.append(hashlib.sha256(data).digest())
-    #return build_tree_from_root(l)[-1][0].encode("hex")
+    # return build_tree_from_root(l)[-1][0].encode("hex")
     tree_hash_root = build_tree_from_root(l)[-1][0]
     return tree_hash_root
     # return codecs.encode(tree_hash_root, 'hex').decode()
+
 
 def build_tree_from_root(root, parent=None):
     # print root
@@ -88,8 +89,10 @@ def build_tree_from_root(root, parent=None):
     parent.append(current)
     return build_tree_from_root(current, parent)
 
+
 def bytes_to_hex(b_str):
     return codecs.encode(b_str, 'hex_codec').decode()
+
 
 def fileChunkGenerator(file_path, chunk_size=1048576,
                        callback_function=None):  # =lambda x,y,z: sys.stdout.write(str(float(y)/z)+'\n') ): # 1048576 = 1Mb
@@ -112,7 +115,7 @@ class ChunkReader():
     """Read <chunk_size> bytes of the input file starting from <start_position>.
     The <callback_function> is called after each subchunk of data is uploaded"""
 
-    def __init__(self, file_path, start_position, chunk_size, subchunk_size=2**20, callback_function=None):
+    def __init__(self, file_path, start_position, chunk_size, subchunk_size=2 ** 20, callback_function=None):
         self.file_path = file_path
         self.start_position = start_position
         if chunk_size < 1 and self.file_path:
@@ -125,21 +128,22 @@ class ChunkReader():
     def get_chunk_generator(self):
         """Return a generator that reads <chunk_size> bytes of the input file starting from <start_position>.
         This function calls the <callback_function> after each subchunk of data is generated"""
-        #         return ''
+        if not self.file_path:
+            return ''
+
         def chunk_generator():
-            if not self.file_path:
-                yield b""
-                raise StopIteration()
             total_size = os.path.getsize(self.file_path)
             file_object = open(self.file_path, 'rb')
             file_object.seek(self.start_position)
             current_position = self.start_position
+            # print("Start pos=%i, Current pos=%i, Chunk Size=%i", self.start_position, current_position, self.chunk_size)
             while True:
                 # exit if enough data was read
-                if current_position-self.start_position >= self.chunk_size:
+                if current_position - self.start_position >= self.chunk_size:
                     break
                 # print(min(subchunk_size, start_position + chunk_size - current_position))
-                data = file_object.read(min(self.subchunk_size, self.start_position + self.chunk_size - current_position))
+                data = file_object.read(
+                    min(self.subchunk_size, self.start_position + self.chunk_size - current_position))
                 # print len(data)
                 if not data:
                     file_object.close()
@@ -151,6 +155,7 @@ class ChunkReader():
                     self.callback_function(self.file_path, current_position - self.start_position, self.chunk_size)
             file_object.close()
             raise StopIteration()
+
         return chunk_generator()
 
     def get_data(self):
@@ -162,7 +167,8 @@ class ChunkReader():
         file_object.close()
         return data
 
-def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2**20, callback_function=None):
+
+def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2 ** 20, callback_function=None):
     """Read <chunk_size> bytes of the input file starting from <start_position>.
     This function calls the <callback_function> after each subchunk of data is uploaded"""
     total_size = os.path.getsize(file_path)
@@ -171,7 +177,7 @@ def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2**
     current_position = start_position
     while True:
         # exit if enough data was read
-        if current_position-start_position >= chunk_size:
+        if current_position - start_position >= chunk_size:
             break
         # print(min(subchunk_size, start_position + chunk_size - current_position))
         data = file_object.read(min(subchunk_size, start_position + chunk_size - current_position))
@@ -186,3 +192,10 @@ def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2**
             callback_function(file_path, current_position - start_position, chunk_size)
     file_object.close()
     raise StopIteration()
+
+
+def progress_bar(title):
+    def progress(x, y, z):
+        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r', flush=True)
+
+    return progress

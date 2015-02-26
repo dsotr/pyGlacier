@@ -5,10 +5,11 @@ import os
 import sys
 import requests
 import settings
+import logging
 from settings import GlacierParams
 import json
 
-from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root
+from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar
 from logger import Logger
 
 
@@ -126,11 +127,12 @@ class GlacierClient:
         return self.perform_request(param)
 
     def upload_part(self, vault_name, upload_id, part_size, part_number, archive_path, archive_hash, part_tree_hash):
+        logging.info("uploading part %i", part_number)
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
         g = ChunkReader(archive_path, part_number * part_size, part_size, subchunk_size=settings.DEFAULT_PART_SIZE,
-                        callback_function=settings.progress_bar(
+                        callback_function=progress_bar(
                             "File %s - chunk %i" % (os.path.basename(archive_path), part_number)))
         param.set(GlacierParams.PAYLOAD, g)
         archive_size = os.path.getsize(archive_path)
@@ -145,10 +147,11 @@ class GlacierClient:
 
     def multiupload_archive(self, vault_name, archive_path):
         # initiate multipart upload
+        logging.warning("Hello world!")
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
         upload_id = init_resp.headers.get('x-amz-multipart-upload-id')
-        print(init_resp.content.decode().replace('\\\\n', '\n'))
-        return init_resp
+        # print(init_resp.content.decode().replace('\\\\n', '\n'))
+        # return init_resp
         # location = init_resp.headers.get('Location')
         # Setup tree hashes for archive parts
         archive_size = os.path.getsize(archive_path)
@@ -205,6 +208,7 @@ class GlacierClient:
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         request_url = endpoint + '?' + self.make_canonical_query_string(param)
         response = None
+        logging.info("Perform request %s %s", method, endpoint)
         if self.debug:
             print('Request URL = ' + request_url)
         # Perform request and get response
@@ -221,14 +225,15 @@ class GlacierClient:
             else:
                 raise InvalidMethodException("Invalid method %s" % method)
         except:
-            sys.stderr.write("Unable to perform request")
+            sys.stderr.write("Unable to perform request\n")
             response = None
+        logging.debug("Response: %s", str(response))
         # Log request / response
         try:
             request_headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
             self.logger.log_response(response.headers, param)
         except:
-            sys.stderr.write("Unable to log response")
+            sys.stderr.write("Unable to log response\n")
         finally:
             self.logger.log_request(request_headers, param)
         return response
@@ -247,9 +252,13 @@ class InvalidMethodException(Exception):
 
 
 if __name__ == '__main__':
-    c = GlacierClient('us-east-1', debug=True)
+    logging.basicConfig(format='%(levelname)s: %(funcName)s() %(message)s', level=logging.DEBUG)
+    # logging.debug('test')
+    # logging.info('test')
+    # logging.warning('test')
+    c = GlacierClient('us-east-1', debug=False)
     file_path = "Downloads.tar"
-    c.multiupload_archive('Foto', file_path)
+    print(c.multiupload_archive('Foto', file_path))
     # response = c.initiate_multipart_upload('test-multipart-1','Foto')
     # response = c.list_vaults()
     # print(response.status_code)

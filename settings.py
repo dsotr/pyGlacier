@@ -72,7 +72,3 @@ class GlacierParams:
         self.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
         self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
 
-def progress_bar(title):
-    def progress(x,y,z):
-        print(title, "%0.1f" % (float(y)/z*100), '%', sep=' ', end='\r', flush=True)
-    return progress
