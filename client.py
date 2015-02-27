@@ -127,11 +127,11 @@ class GlacierClient:
         return self.perform_request(param)
 
     def upload_part(self, vault_name, upload_id, part_size, part_number, archive_path, archive_hash, part_tree_hash):
-        logging.info("uploading part %i", part_number)
+        logging.info("uploading part %i, file from position %i to %i", part_number, part_number * part_size, part_size)
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
-        g = ChunkReader(archive_path, part_number * part_size, part_size, subchunk_size=settings.DEFAULT_PART_SIZE,
+        g = ChunkReader(archive_path, part_number * part_size, part_size,
                         callback_function=progress_bar(
                             "File %s - chunk %i" % (os.path.basename(archive_path), part_number)))
         param.set(GlacierParams.PAYLOAD, g)
@@ -150,6 +150,7 @@ class GlacierClient:
         logging.warning("Hello world!")
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
         upload_id = init_resp.headers.get('x-amz-multipart-upload-id')
+        logging.info(upload_id)
         # print(init_resp.content.decode().replace('\\\\n', '\n'))
         # return init_resp
         # location = init_resp.headers.get('Location')
@@ -219,7 +220,9 @@ class GlacierClient:
             elif method == 'GET':
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
-                pass
+                print("Performing PUT")
+                response = requests.put(request_url, headers=request_headers,
+                                         data=param.get(GlacierParams.PAYLOAD).get_data())
             elif method == 'DELETE':
                 pass
             else:
@@ -230,10 +233,15 @@ class GlacierClient:
         logging.debug("Response: %s", str(response))
         # Log request / response
         try:
-            request_headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
-            self.logger.log_response(response.headers, param)
+                if response.headers:
+                    # request_headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
+                    response.headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
+                    self.logger.log_response(response.headers, response.text, param)
+                    logging.info("Logged response")
+                else:
+                    logging.info("Empty header response")
         except:
-            sys.stderr.write("Unable to log response\n")
+            logging.error("Unable to log response: %s" % response)
         finally:
             self.logger.log_request(request_headers, param)
         return response
@@ -252,13 +260,13 @@ class InvalidMethodException(Exception):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format='%(levelname)s: %(funcName)s() %(message)s', level=logging.DEBUG)
-    # logging.debug('test')
+    logging.basicConfig(filename='example.log', format='%(asctime)s\t%(levelname)s\t%(funcName)s()\t%(message)s', level=logging.DEBUG)
+    logging.info('**** Starting new log ****')
     # logging.info('test')
     # logging.warning('test')
     c = GlacierClient('us-east-1', debug=False)
     file_path = "Downloads.tar"
-    print(c.multiupload_archive('Foto', file_path))
+    #print(c.multiupload_archive('Foto', file_path))
     # response = c.initiate_multipart_upload('test-multipart-1','Foto')
     # response = c.list_vaults()
     # print(response.status_code)

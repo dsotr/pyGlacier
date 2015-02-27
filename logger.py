@@ -60,7 +60,7 @@ class Logger():
         stmt = cursor.execute("PRAGMA table_info(%s)" % (table_name,))
         return [item[1] for item in stmt.fetchall()]
 
-    def log(self, table, headers, param):
+    def log(self, table, headers, body, param):
         cursor = self.get_cursor()
         sql_friendly_headers = convert_dict_keys_to_alphanum(headers)
         # add the original headers dictionary to the table
@@ -71,6 +71,8 @@ class Logger():
         sql_friendly_headers['url'] = param.get(GlacierParams.URI)
         # add request method
         sql_friendly_headers['method'] = param.get(GlacierParams.METHOD)
+        # add response body
+        sql_friendly_headers['body'] = str(body)
         columns = self.get_columns(table)
         for header in sql_friendly_headers:
             # Add a column for each header
@@ -90,10 +92,10 @@ class Logger():
         return result
 
     def log_request(self, headers, param):
-        return self.log('requests', headers, param)
+        return self.log('requests', headers, None, param)
 
-    def log_response(self, headers, param):
-        return self.log('responses', headers, param)
+    def log_response(self, headers, body, param):
+        return self.log('responses', headers, body, param)
 
 
 if __name__ == '__main__':
