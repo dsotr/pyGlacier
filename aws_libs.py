@@ -196,6 +196,6 @@ def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2 *
 
 def progress_bar(title):
     def progress(x, y, z):
-        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r', flush=True)
+        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')#, flush=True)
 
     return progress
