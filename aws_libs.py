@@ -193,9 +193,30 @@ def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2 *
     file_object.close()
     raise StopIteration()
 
+class MyFile(object):
+    def __init__(self, *args, **kwds):
+        self.file_obj = open(*args, **kwds)
+
+    def __enter__(self):
+        return self.file_obj
+
+    def __exit__(self, *args):
+        print('done')
+        self.file_obj.close()
+
+    def read(self, *args, **kwargs):
+        # if args:
+        #     print(args[0])
+        # else:
+        #     print('Read plain')
+        return self.file_obj.read(*args, **kwargs)
 
 def progress_bar(title):
     def progress(x, y, z):
-        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')#, flush=True)
+        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')  # , flush=True)
 
     return progress
+
+if __name__=='__main__':
+    fo = MyFile('testupload.txt')
+    print(fo.read()[:100])

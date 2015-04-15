@@ -9,7 +9,7 @@ import logging
 from settings import GlacierParams
 import json
 
-from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar
+from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar, MyFile
 from logger import Logger
 
 
@@ -147,7 +147,7 @@ class GlacierClient:
 
     def multiupload_archive(self, vault_name, archive_path):
         # initiate multipart upload
-        logging.warning("Hello world!")
+        logging.info("multiupload_archive. Valut: %s Path: %s" % (vault_name, archive_path))
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
         upload_id = init_resp.headers.get('x-amz-multipart-upload-id')
         logging.info(upload_id)
@@ -170,10 +170,9 @@ class GlacierClient:
             start_byte += part_size
         archive_tree_hash = bytes_to_hex(build_tree_from_root(part_bytes_hashes)[-1][0])
         part_hex_hashes = list(map(bytes_to_hex, part_bytes_hashes))
-        if self.debug:
-            print("Hash calculation complete.")
-            print("Archive hash: %s" % archive_tree_hash)
-            print("Parts hashes: \n%s" % '\n'.join(part_hex_hashes))
+        logging.debug("Archive hash: %s" % archive_tree_hash)
+        logging.debug("Parts hashes: \n%s" % '\n'.join(part_hex_hashes))
+
         for i in range(len(part_hex_hashes)):
             part_resp = self.upload_part(vault_name, upload_id, part_size, i,
                                          archive_path, archive_tree_hash, part_hex_hashes[i])
@@ -209,7 +208,7 @@ class GlacierClient:
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         request_url = endpoint + '?' + self.make_canonical_query_string(param)
         response = None
-        logging.info("Perform request %s %s", method, endpoint)
+        logging.info("%s %s", method, endpoint)
         if self.debug:
             print('Request URL = ' + request_url)
         # Perform request and get response
@@ -221,15 +220,18 @@ class GlacierClient:
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
                 print("Performing PUT")
+                my_file = MyFile('testupload.txt','rb')
                 response = requests.put(request_url, headers=request_headers,
-                                         data=param.get(GlacierParams.PAYLOAD).get_data())
+                                         # data=param.get(GlacierParams.PAYLOAD).get_data().decode())
+                                         data=my_file)
             elif method == 'DELETE':
                 pass
             else:
                 raise InvalidMethodException("Invalid method %s" % method)
         except:
-            sys.stderr.write("Unable to perform request\n")
-            response = None
+            logging.fatal("Unable to perform request: %s" % sys.exc_info()[0])
+            raise
+
         logging.debug("Response: %s", str(response))
         # Log request / response
         try:
@@ -265,9 +267,9 @@ if __name__ == '__main__':
     # logging.info('test')
     # logging.warning('test')
     c = GlacierClient('us-east-1', debug=False)
-    file_path = "Downloads.tar"
+    file_path = "testupload.txt"
     #print(c.multiupload_archive('Foto', file_path))
-    # response = c.initiate_multipart_upload('test-multipart-1','Foto')
+    response = c.multiupload_archive('Foto', file_path)
     # response = c.list_vaults()
     # print(response.status_code)
     # print(response.text)
