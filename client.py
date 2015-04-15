@@ -221,8 +221,10 @@ class GlacierClient:
             elif method == 'PUT':
                 print("Performing PUT")
                 my_file = MyFile('testupload.txt','rb')
+                [start, end] = map(int, request_headers['Content-Range'][:-2].split('-'))
+                my_file.set_range(start, end)
                 response = requests.put(request_url, headers=request_headers,
-                                         # data=param.get(GlacierParams.PAYLOAD).get_data().decode())
+                                         #data=param.get(GlacierParams.PAYLOAD).get_data())
                                          data=my_file)
             elif method == 'DELETE':
                 pass

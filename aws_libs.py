@@ -195,6 +195,8 @@ def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2 *
 
 class MyFile(object):
     def __init__(self, *args, **kwds):
+        self.start = 0
+        self.end = 0
         self.file_obj = open(*args, **kwds)
 
     def __enter__(self):
@@ -205,11 +207,22 @@ class MyFile(object):
         self.file_obj.close()
 
     def read(self, *args, **kwargs):
-        # if args:
-        #     print(args[0])
+        if args:
+            current_cursor = self.file_obj.tell()
+            read_bytes = current_cursor - self.start
+            if self.start + read_bytes + int(args[0]) > self.end:
+                new_args = list(args[:])
+                new_args[0] = self.end - read_bytes - self.start
+                args = tuple(new_args)
         # else:
         #     print('Read plain')
         return self.file_obj.read(*args, **kwargs)
+
+    def set_range(self, start, end):
+        self.start = start
+        self.end = end
+        self.file_obj.seek(start)
+
 
 def progress_bar(title):
     def progress(x, y, z):
