@@ -220,6 +220,7 @@ class GlacierClient:
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
                 print("Performing PUT")
+                # harcodato l'utilizzo del file testupload.txt, come parametro del request.put va messo un file object.
                 my_file = MyFile('testupload.txt','rb')
                 [start, end] = map(int, request_headers['Content-Range'][:-2].split('-'))
                 my_file.set_range(start, end)
