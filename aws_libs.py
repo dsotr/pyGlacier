@@ -255,9 +255,6 @@ class ChunkFileObject(object):
     def tell(self, *args, **kwargs):
         return self.file_obj.tell() - self.start
 
-    # def close(self, *args, **kwargs):
-    #     return self.file_obj.close(*args, **kwargs)
-
     def set_range(self, start, end):
         self.start = start
         self.end = end
