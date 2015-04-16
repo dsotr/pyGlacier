@@ -193,11 +193,26 @@ def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2 *
     file_object.close()
     raise StopIteration()
 
-class MyFile(object):
+
+class ChunkFileObject(object):
+    """
+    This is a file-type object. it reads a file from the file system and behaves in the same way as the open() function.
+    In addition, a range can be set (start, end) using the set_range method. This operation restricts the object
+    to the bytes of the file included in that range.
+    If a range is set using the set_range method, the class behaves as if a smaller file
+    (containing only bytes from start to end) was provided.
+    :param args: the same parameters as the open() function
+    :param kwds: the same parameters as the open() function
+    """
+
     def __init__(self, *args, **kwds):
-        self.start = 0
-        self.end = 0
         self.file_obj = open(*args, **kwds)
+        self.start = 0
+        # evaluate file size and set self.end to that
+        self.file_obj.seek(0, os.SEEK_END)
+        self.end = self.file_obj.tell()
+        # reset file index to 0
+        self.file_obj.seek(0)
 
     def __enter__(self):
         return self.file_obj
@@ -211,17 +226,46 @@ class MyFile(object):
             current_cursor = self.file_obj.tell()
             read_bytes = current_cursor - self.start
             if self.start + read_bytes + int(args[0]) > self.end:
-                new_args = list(args[:])
+                print("reascaling read length")
+                new_args = list(args)
                 new_args[0] = self.end - read_bytes - self.start
                 args = tuple(new_args)
-        # else:
-        #     print('Read plain')
+        else:
+             return self.file_obj.read(self.end - self.tell())
         return self.file_obj.read(*args, **kwargs)
+
+    def seek(self, *args, **kwargs):
+        if args:
+            new_args = list(args)
+            # default whence parameter
+            if len(args) < 2:
+                new_args.append(os.SEEK_SET)
+            if new_args[1] == os.SEEK_SET:  # Absolute file positioning
+                new_args[0] = args[0] + self.start
+            elif new_args[1] == os.SEEK_CUR: # Relative to current position
+                new_args = [self.file_obj.tell() + args[0], os.SEEK_SET]
+            elif new_args[1] == os.SEEK_END:  # Relative to end position
+                if new_args[0] == 0:
+                    new_args = [self.end, os.SEEK_SET]
+                    return self.file_obj.seek(*new_args) - self.start
+                else:  # Throw error as per python3 specs
+                    return self.file_obj.seek(*new_args)
+        return self.file_obj.seek(*new_args) - self.start
+
+    def tell(self, *args, **kwargs):
+        return self.file_obj.tell() - self.start
+
+    # def close(self, *args, **kwargs):
+    #     return self.file_obj.close(*args, **kwargs)
 
     def set_range(self, start, end):
         self.start = start
         self.end = end
-        self.file_obj.seek(start)
+        self.seek(0)
+
+    def __getattr__(self, attr):
+        # Fallback to file object method if the called method wasn't overridden
+        return getattr(self.file_obj, attr)
 
 
 def progress_bar(title):
@@ -231,5 +275,8 @@ def progress_bar(title):
     return progress
 
 if __name__=='__main__':
-    fo = MyFile('testupload.txt')
-    print(fo.read()[:100])
+    fo = ChunkFileObject('testupload.txt')
+    fo.set_range(0, 2340)
+    s = fo.read(2000)
+    s += fo.read(2000)
+    print(len(s))
