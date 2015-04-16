@@ -9,7 +9,7 @@ import logging
 from settings import GlacierParams
 import json
 
-from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar, MyFile
+from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar
 from logger import Logger
 
 

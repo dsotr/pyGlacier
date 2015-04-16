@@ -3,6 +3,7 @@
 from client import GlacierClient
 from unittest import TestCase
 import requests
+import re
 from aws_libs import *
 from subprocess import Popen, PIPE
 
@@ -27,8 +28,9 @@ from subprocess import Popen, PIPE
 #
 class TestConnection(TestCase):
     def test_download_data(self):
-        url = 'http://checkip.dyndns.com/'
+        url = 'http://checkip.dns.he.net/'
+        reg = '<body>.*?([0-9.]+).*</body>'
         r = requests.get(url)
-        self.assertIsNotNone(r)
+        m = re.findall(reg, r.text, re.DOTALL)
         self.assertTrue(len(r.content) > 88)
-        print("PASSED test_download_data(): %s" % r.content[56:89].decode())
+        print("PASSED test_download_data(): %s" % m[0].strip())
