@@ -60,7 +60,7 @@ def tree_hash(file_path, start, bytes_number):
     :return: the tree hash of the required part
     """
     l = []
-    reader = ChunkReader(file_path, start, bytes_number, callback_function=progress_bar("Tree hash"))
+    reader = ChunkReader(file_path, start, bytes_number, callback_function = progress_bar("Tree hash"))
     g = reader.get_chunk_generator()
     for data in g:
         l.append(hashlib.sha256(data).digest())
@@ -150,7 +150,7 @@ class ChunkReader():
                     break
                 yield data
                 current_position = file_object.tell()
-                # print(data)
+                #print(data)
                 if self.callback_function:
                     self.callback_function(self.file_path, current_position - self.start_position, self.chunk_size)
             file_object.close()
@@ -267,7 +267,7 @@ class ChunkFileObject(object):
 
 def progress_bar(title):
     def progress(x, y, z):
-        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')  # , flush=True)
+        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r') # , flush=True)
 
     return progress
 
