@@ -1,6 +1,6 @@
 # -*- coding: latin-1 -*-
 
-import sys, os, hashlib, hmac, codecs, logging
+import sys, os, hashlib, hmac, codecs, logging, settings
 
 
 class Signer:
@@ -60,10 +60,17 @@ def tree_hash(file_path, start, bytes_number):
     :return: the tree hash of the required part
     """
     l = []
-    reader = ChunkReader(file_path, start, bytes_number, callback_function = progress_bar("Tree hash"))
-    g = reader.get_chunk_generator()
-    for data in g:
-        l.append(hashlib.sha256(data).digest())
+    #reader = ChunkReader(file_path, start, bytes_number, callback_function=progress_bar("Tree hash"))
+    chunk_file = ChunkFileObject(file_path, start = start, end = start + bytes_number )
+    # g = reader.get_chunk_generator()
+    # for data in g:
+    #     l.append(hashlib.sha256(data).digest())
+    while True:
+        data = chunk_file.read(settings.TREE_HASH_PART_SIZE)
+        if data:
+            l.append(hashlib.sha256(data).digest())
+        else:
+            break
     # return build_tree_from_root(l)[-1][0].encode("hex")
     tree_hash_root = build_tree_from_root(l)[-1][0]
     return tree_hash_root
@@ -150,7 +157,7 @@ class ChunkReader():
                     break
                 yield data
                 current_position = file_object.tell()
-                #print(data)
+                # print(data)
                 if self.callback_function:
                     self.callback_function(self.file_path, current_position - self.start_position, self.chunk_size)
             file_object.close()
@@ -168,30 +175,30 @@ class ChunkReader():
         return data
 
 
-def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2 ** 20, callback_function=None):
-    """Read <chunk_size> bytes of the input file starting from <start_position>.
-    This function calls the <callback_function> after each subchunk of data is uploaded"""
-    total_size = os.path.getsize(file_path)
-    file_object = open(file_path, 'rb')
-    file_object.seek(start_position)
-    current_position = start_position
-    while True:
-        # exit if enough data was read
-        if current_position - start_position >= chunk_size:
-            break
-        # print(min(subchunk_size, start_position + chunk_size - current_position))
-        data = file_object.read(min(subchunk_size, start_position + chunk_size - current_position))
-        # print len(data)
-        if not data:
-            file_object.close()
-            break
-        yield data
-        current_position = file_object.tell()
-        # print(data)
-        if callback_function:
-            callback_function(file_path, current_position - start_position, chunk_size)
-    file_object.close()
-    raise StopIteration()
+# def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2 ** 20, callback_function=None):
+#     """Read <chunk_size> bytes of the input file starting from <start_position>.
+#     This function calls the <callback_function> after each subchunk of data is uploaded"""
+#     total_size = os.path.getsize(file_path)
+#     file_object = open(file_path, 'rb')
+#     file_object.seek(start_position)
+#     current_position = start_position
+#     while True:
+#         # exit if enough data was read
+#         if current_position - start_position >= chunk_size:
+#             break
+#         # print(min(subchunk_size, start_position + chunk_size - current_position))
+#         data = file_object.read(min(subchunk_size, start_position + chunk_size - current_position))
+#         # print len(data)
+#         if not data:
+#             file_object.close()
+#             break
+#         yield data
+#         current_position = file_object.tell()
+#         # print(data)
+#         if callback_function:
+#             callback_function(file_path, current_position - start_position, chunk_size)
+#     file_object.close()
+#     raise StopIteration()
 
 
 class ChunkFileObject(object):
@@ -202,16 +209,22 @@ class ChunkFileObject(object):
     If a range is set using the set_range method, the class behaves as if a smaller file
     (containing only bytes from start to end) was provided.
     :param args: the same parameters as the open() function
-    :param kwds: the same parameters as the open() function
+    :param kwds:    start = starting byte
+                    end   = last byte
+                    the same parameters as the open() function. 'start' and 'end' are removed if present
     """
 
     def __init__(self, *args, **kwds):
+        print(kwds)
         self.file_obj = open(*args, **kwds)
-        self.start = 0
-        # evaluate file size and set self.end to that
+        # read start from keyword args (and remove it). If start is not present defaults to 0
+        self.start = kwds.pop('start', 0)
+        # seek the end of file to evaluate file size
         self.file_obj.seek(0, os.SEEK_END)
-        self.end = self.file_obj.tell()
+        # read end from keyword args (and remove it). If end is not present defaults to file size
+        self.end = kwds.pop('end', self.file_obj.tell())
         # reset file index to 0
+        print(kwds)
         self.file_obj.seek(0)
 
     def __enter__(self):
@@ -267,7 +280,7 @@ class ChunkFileObject(object):
 
 def progress_bar(title):
     def progress(x, y, z):
-        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r') # , flush=True)
+        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')  # , flush=True)
 
     return progress
 

@@ -21,6 +21,7 @@ SERVICE = 'glacier'
 # Default size of each part in a multipart upload
 #DEFAULT_PART_SIZE = 2 ** (20 + 8)  # 268435456 = 256Mb
 DEFAULT_PART_SIZE = 2 ** (20 + 1)  # 2Mb
+TREE_HASH_PART_SIZE = 2 ** 20 # 1Mb
 
 class GlacierParams:
     # Static attribute names

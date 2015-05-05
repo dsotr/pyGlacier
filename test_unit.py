@@ -10,7 +10,7 @@ from subprocess import Popen, PIPE
 
 class TestTree_hash(TestCase):
     def test_tree_hash(self):
-        file_path = "Downloads.tar"
+        file_path = "testupload.txt"
         out_j = Popen(['java', 'TreeHashExample', file_path], stdout=PIPE)
         out_p = tree_hash(file_path, 0, os.path.getsize(file_path))
         self.assertEqual(out_j.stdout.read().decode(), bytes_to_hex(out_p))
