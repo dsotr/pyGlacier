@@ -30,6 +30,7 @@ class GlacierParams:
     REQ_PARAM = 'REQ_PARAM'
     HEADERS = 'HEADERS'
     PAYLOAD = 'PAYLOAD'
+    PAYLOAD_CONTENT = 'PAYLOAD_CONTENT'
     AMZDATETIME = 'AMZDATETIME'
     DATE = 'DATE'
 
@@ -40,7 +41,7 @@ class GlacierParams:
         self.params = dict()
         self.params[GlacierParams.REQ_PARAM] = dict()
         self.params[GlacierParams.HEADERS] = dict()
-        self.params[GlacierParams.PAYLOAD] = ChunkReader(None, 0, 0)
+        self.params[GlacierParams.PAYLOAD] = None # At runtime, this will store a ChunkFileObject
         self.make_dates()
 
     def set(self, key, value):
@@ -74,3 +75,12 @@ class GlacierParams:
         self.set(GlacierParams.AMZDATETIME, t.strftime('%Y%m%dT%H%M%SZ'))
         self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
 
+    def get_payload_content(self):
+        # Read payload data and brings the cursor back to 0 so that it can be used again
+        if self.get(GlacierParams.PAYLOAD_CONTENT):
+            return self.get(GlacierParams.PAYLOAD_CONTENT)
+        payload = self.get(GlacierParams.PAYLOAD)
+        content = payload.read()
+        payload.seek(0)
+        self.set(GlacierParams.PAYLOAD_CONTENT, content)
+        return content

@@ -61,7 +61,7 @@ def tree_hash(file_path, start, bytes_number):
     """
     l = []
     #reader = ChunkReader(file_path, start, bytes_number, callback_function=progress_bar("Tree hash"))
-    chunk_file = ChunkFileObject(file_path, start = start, end = start + bytes_number )
+    chunk_file = ChunkFileObject(file_path, 'rb', start = start, end = start + bytes_number )
     # g = reader.get_chunk_generator()
     # for data in g:
     #     l.append(hashlib.sha256(data).digest())
@@ -215,16 +215,19 @@ class ChunkFileObject(object):
     """
 
     def __init__(self, *args, **kwds):
-        print(kwds)
-        self.file_obj = open(*args, **kwds)
+        logging.debug('Instantiate FileChunkObject with args: %s and kwywords: %s' %(args, kwds))
         # read start from keyword args (and remove it). If start is not present defaults to 0
         self.start = kwds.pop('start', 0)
-        # seek the end of file to evaluate file size
-        self.file_obj.seek(0, os.SEEK_END)
-        # read end from keyword args (and remove it). If end is not present defaults to file size
-        self.end = kwds.pop('end', self.file_obj.tell())
+        # read end from keyword args (and remove it).
+        self.end = kwds.pop('end', None)
+        # Create a file object from input args
+        self.file_obj = open(*args, **kwds)
+        # If end is not present defaults to file size
+        if not self.end:
+            # seek the end of file to evaluate file size
+            self.file_obj.seek(0, os.SEEK_END)
+            self.end = self.file_obj.tell()
         # reset file index to 0
-        print(kwds)
         self.file_obj.seek(0)
 
     def __enter__(self):
@@ -239,13 +242,14 @@ class ChunkFileObject(object):
             current_cursor = self.file_obj.tell()
             read_bytes = current_cursor - self.start
             if self.start + read_bytes + int(args[0]) > self.end:
-                print("reascaling read length")
                 new_args = list(args)
                 new_args[0] = self.end - read_bytes - self.start
+                logging.debug("reascaling read length from %i to %i" %(args[0], new_args[0]))
                 args = tuple(new_args)
+            print('read %i bytes' %args[0]) # TODO: replace this with a callback function
+            return self.file_obj.read(*args, **kwargs)
         else:
              return self.file_obj.read(self.end - self.tell())
-        return self.file_obj.read(*args, **kwargs)
 
     def seek(self, *args, **kwargs):
         if args:

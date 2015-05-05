@@ -9,7 +9,7 @@ import logging
 from settings import GlacierParams
 import json
 
-from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar
+from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar, ChunkFileObject
 from logger import Logger
 
 
@@ -37,7 +37,9 @@ class GlacierClient:
         canonical_headers_list = ['host', 'x-amz-date', 'x-amz-glacier-version']
         header_list = map(lambda x: (x[0].lower().strip(), x[1].strip()),
                           filter(lambda x: x[0] in canonical_headers_list, tuple(param.get('HEADERS').items())))
-        return '\n'.join([':'.join(e) for e in sorted(header_list)]) + '\n'
+        canonical_header = '\n'.join([':'.join(e) for e in sorted(header_list)]) + '\n'
+        logging.info('Canonical header: %s' %canonical_header)
+        return canonical_header
 
     def make_canonical_request(self, param):
         canonical_request_content = [  # self.method,   # self.canonical_uri,   # self.makeCanonicalQueryString(),
@@ -48,11 +50,12 @@ class GlacierClient:
                                        self.make_canonical_query_string(param),
                                        self.make_canonical_headers(param),
                                        self.make_signed_headers(),
-                                       self.signer.hashHex(param.get(GlacierParams.PAYLOAD).get_data()),
+                                       # self.signer.hashHex(param.get(GlacierParams.PAYLOAD).get_data()),
+                                       self.signer.hashHex(param.get_payload_content()),
         ]
-        if self.debug:
-            print('Canonical String\n' + '\n'.join(canonical_request_content) + '\n******************')
-        return '\n'.join(canonical_request_content)
+        canonical_string = '\n'.join(canonical_request_content)
+        logging.info('Canonical String\n' + canonical_string + '\n')
+        return canonical_string
 
     def make_signed_headers(self):
         """This lists the headers in the canonical_headers list,
@@ -184,22 +187,22 @@ class GlacierClient:
         return compl_resp
 
     def upload_archive(self, file_path, vault_name):
+        '''
+        Upload a file in a single upload (not multipart)
+        :param file_path: path of the file to upload
+        :param vault_name: Vault name
+        :return: The Requests response object
+        '''
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/archives' % vault_name)
-        # param.make_dates()
         param.set_header('Content-Length', str(os.path.getsize(file_path)))
         param.set_header('x-amz-archive-description', self.get_archive_name(file_path))
-        content = ChunkReader(file_path, 0, os.path.getsize(file_path), os.path.getsize(file_path))
+        content = ChunkFileObject(file_path, 'rb')
         param.set(GlacierParams.PAYLOAD, content)
-        param.set_header('x-amz-content-sha256', self.signer.hashHex(content.get_data()))
-        # endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
-        # request_url = endpoint + '?' + self.make_canonical_query_string(param)
-        # self.make_authorization_header(param)
-        # if self.debug:
-        # print('Request URL = ' + request_url)
-        # r = requests.post(request_url, headers=param.get(GlacierParams.HEADERS), data=content)
-        # print('Response code: %d\n' % r.status_code)
+        param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
+        param.set_header('x-amz-sha256-tree-hash', bytes_to_hex(tree_hash(file_path, 0, content.end)))
+        self.make_authorization_header(param)
         return self.perform_request(param)
 
     def perform_request(self, param):
@@ -215,7 +218,8 @@ class GlacierClient:
         try:
             if method == 'POST':
                 response = requests.post(request_url, headers=request_headers,
-                                         data=param.get(GlacierParams.PAYLOAD).get_chunk_generator())
+                                         # data=param.get(GlacierParams.PAYLOAD).get_chunk_generator())
+                                         data=param.get(GlacierParams.PAYLOAD))
             elif method == 'GET':
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
@@ -272,9 +276,10 @@ if __name__ == '__main__':
     c = GlacierClient('us-east-1', debug=False)
     file_path = "testupload.txt"
     #print(c.multiupload_archive('Foto', file_path))
-    response = c.multiupload_archive('Foto', file_path)
+    # response = c.multiupload_archive('Foto', file_path)
+    response = c.upload_archive(file_path, 'Foto')
     # response = c.list_vaults()
-    # print(response.status_code)
-    # print(response.text)
-    # print(response.encoding)
-    # print(response.headers)
+    print(response.status_code)
+    print(response.text)
+    print(response.encoding)
+    print(response.headers)

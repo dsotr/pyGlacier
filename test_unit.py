@@ -7,6 +7,10 @@ import re
 from aws_libs import *
 from subprocess import Popen, PIPE
 
+class TestInstantiateLogging(TestCase):
+    def test_logging(self):
+        logging.basicConfig(filename='example.log', format='%(asctime)s\t%(levelname)s\t[%(module)s]\t%(funcName)s()\t%(message)s', level=logging.DEBUG)
+        print('PASSED: Logging on')
 
 class TestTree_hash(TestCase):
     def test_tree_hash(self):
