@@ -9,7 +9,7 @@ import logging
 from settings import GlacierParams
 import json
 
-from aws_libs import Signer, ChunkReader, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar, ChunkFileObject
+from aws_libs import Signer, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar, ChunkFileObject
 from logger import Logger
 
 
@@ -101,14 +101,7 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults')
-        # param.make_dates()
-        # endpoint = 'https://%s/-/vaults' % self.host
-        # request_url = endpoint + '?' + self.make_canonical_query_string(param)
         self.make_authorization_header(param)
-
-        # self.logger.log_request(param.get(GlacierParams.HEADERS))
-        # r = requests.get(request_url, headers=param.get(GlacierParams.HEADERS))
-        # self.logger.log_response(r.headers)
         return self.perform_request(param)
 
     def initiate_multipart_upload(self, vault_name, multipard_desc, part_size=settings.DEFAULT_PART_SIZE):
@@ -134,10 +127,12 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
-        g = ChunkReader(archive_path, part_number * part_size, part_size,
-                        callback_function=progress_bar(
-                            "File %s - chunk %i" % (os.path.basename(archive_path), part_number)))
-        param.set(GlacierParams.PAYLOAD, g)
+        # g = ChunkReader(archive_path, part_number * part_size, part_size,
+        #                 callback_function=progress_bar(
+        #                     "File %s - chunk %i" % (os.path.basename(archive_path), part_number)))
+        # TODO: Verify start and end are correct
+        payload = ChunkFileObject(file_path, 'rb', start = part_number * part_size, end = (part_number + 1) * part_size)
+        param.set(GlacierParams.PAYLOAD, payload)
         archive_size = os.path.getsize(archive_path)
         param.set_header('Content-Length', str(min(archive_size - part_number * part_size, part_size)))
         param.set_header('Content-Range', "%s-%s/*"
@@ -201,7 +196,7 @@ class GlacierClient:
         content = ChunkFileObject(file_path, 'rb')
         param.set(GlacierParams.PAYLOAD, content)
         param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
-        param.set_header('x-amz-sha256-tree-hash', bytes_to_hex(tree_hash(file_path, 0, content.end)))
+        #param.set_header('x-amz-sha256-tree-hash', bytes_to_hex(tree_hash(file_path, 0, content.end)))
         self.make_authorization_header(param)
         return self.perform_request(param)
 
@@ -218,19 +213,12 @@ class GlacierClient:
         try:
             if method == 'POST':
                 response = requests.post(request_url, headers=request_headers,
-                                         # data=param.get(GlacierParams.PAYLOAD).get_chunk_generator())
                                          data=param.get(GlacierParams.PAYLOAD))
             elif method == 'GET':
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
-                print("Performing PUT")
-                # harcodato l'utilizzo del file testupload.txt, come parametro del request.put va messo un file object.
-                my_file = MyFile('testupload.txt','rb')
-                [start, end] = map(int, request_headers['Content-Range'][:-2].split('-'))
-                my_file.set_range(start, end)
                 response = requests.put(request_url, headers=request_headers,
-                                         #data=param.get(GlacierParams.PAYLOAD).get_data())
-                                         data=my_file)
+                                         data=param.get(GlacierParams.PAYLOAD).get_data())
             elif method == 'DELETE':
                 pass
             else:
@@ -243,7 +231,6 @@ class GlacierClient:
         # Log request / response
         try:
                 if response.headers:
-                    # request_headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
                     response.headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
                     self.logger.log_response(response.headers, response.text, param)
                     logging.info("Logged response")

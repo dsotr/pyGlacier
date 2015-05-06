@@ -1,7 +1,7 @@
 # -*- coding: latin-1 -*-
 
 import datetime, time
-from aws_libs import ChunkReader
+#from aws_libs import ChunkFileObject
 
 # Available glacier regions
 REGIONS = {

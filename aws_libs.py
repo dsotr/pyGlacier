@@ -32,22 +32,25 @@ class Signer:
         kSigning = self.sign(kService, 'aws4_request')
         return kSigning
 
-    def hashHex(self, content: str):
-        return hashlib.sha256(content).hexdigest()
+    def hashHex(self, content):
+        if type(content) is str:
+            return hashlib.sha256(content.encode('utf-8')).hexdigest()
+        else:
+            return hashlib.sha256(content).hexdigest()
 
-    def treeHash(self, file_path):
-        l = []
-        # f=open(file_path, 'rb')
-        count = 0
-        totlen = float(os.path.getsize(file_path))
-        for data in fileChunkGenerator(file_path):
-            l.append(hashlib.sha256(data).digest())
-            count += len(data)
-            logging.info('%i %%' % (count * 100 / totlen))
-        # f.close()
-        # print "root built"
-        # print build_tree_from_root(l)[-1][0].encode("hex")
-        return build_tree_from_root(l)[-1][0].encode("hex")
+    # def treeHash(self, file_path):
+    #     l = []
+    #     # f=open(file_path, 'rb')
+    #     count = 0
+    #     totlen = float(os.path.getsize(file_path))
+    #     for data in fileChunkGenerator(file_path):
+    #         l.append(hashlib.sha256(data).digest())
+    #         count += len(data)
+    #         logging.info('%i %%' % (count * 100 / totlen))
+    #     # f.close()
+    #     # print "root built"
+    #     # print build_tree_from_root(l)[-1][0].encode("hex")
+    #     return build_tree_from_root(l)[-1][0].encode("hex")
 
 
 def tree_hash(file_path, start, bytes_number):
@@ -101,104 +104,78 @@ def bytes_to_hex(b_str):
     return codecs.encode(b_str, 'hex_codec').decode()
 
 
-def fileChunkGenerator(file_path, chunk_size=1048576,
-                       callback_function=None):  # =lambda x,y,z: sys.stdout.write(str(float(y)/z)+'\n') ): # 1048576 = 1Mb
-    total_size = os.path.getsize(file_path)
-    # print total_size
-    file_object = open(file_path, 'rb')
-    while True:
-        data = file_object.read(chunk_size)
-        # print len(data)
-        if not data:
-            file_object.close()
-            break
-        yield data
-        if callback_function:
-            callback_function(file_path, len(data), total_size)
-    raise StopIteration()
-
-
-class ChunkReader():
-    """Read <chunk_size> bytes of the input file starting from <start_position>.
-    The <callback_function> is called after each subchunk of data is uploaded"""
-
-    def __init__(self, file_path, start_position, chunk_size, subchunk_size=2 ** 20, callback_function=None):
-        self.file_path = file_path
-        self.start_position = start_position
-        if chunk_size < 1 and self.file_path:
-            self.chunk_size = os.path.getsize(file_path)
-        else:
-            self.chunk_size = chunk_size
-        self.subchunk_size = subchunk_size
-        self.callback_function = callback_function
-
-    def get_chunk_generator(self):
-        """Return a generator that reads <chunk_size> bytes of the input file starting from <start_position>.
-        This function calls the <callback_function> after each subchunk of data is generated"""
-        if not self.file_path:
-            return ''
-
-        def chunk_generator():
-            total_size = os.path.getsize(self.file_path)
-            file_object = open(self.file_path, 'rb')
-            file_object.seek(self.start_position)
-            current_position = self.start_position
-            # print("Start pos=%i, Current pos=%i, Chunk Size=%i", self.start_position, current_position, self.chunk_size)
-            while True:
-                # exit if enough data was read
-                if current_position - self.start_position >= self.chunk_size:
-                    break
-                # print(min(subchunk_size, start_position + chunk_size - current_position))
-                data = file_object.read(
-                    min(self.subchunk_size, self.start_position + self.chunk_size - current_position))
-                # print len(data)
-                if not data:
-                    file_object.close()
-                    break
-                yield data
-                current_position = file_object.tell()
-                # print(data)
-                if self.callback_function:
-                    self.callback_function(self.file_path, current_position - self.start_position, self.chunk_size)
-            file_object.close()
-            raise StopIteration()
-
-        return chunk_generator()
-
-    def get_data(self):
-        if not self.file_path:
-            return b""
-        file_object = open(self.file_path, 'rb')
-        file_object.seek(self.start_position)
-        data = file_object.read(self.chunk_size)
-        file_object.close()
-        return data
-
-
-# def chunk_reader_unused(file_path, start_position, chunk_size, subchunk_size=2 ** 20, callback_function=None):
-#     """Read <chunk_size> bytes of the input file starting from <start_position>.
-#     This function calls the <callback_function> after each subchunk of data is uploaded"""
+# def fileChunkGenerator(file_path, chunk_size=1048576,
+#                        callback_function=None):  # =lambda x,y,z: sys.stdout.write(str(float(y)/z)+'\n') ): # 1048576 = 1Mb
 #     total_size = os.path.getsize(file_path)
+#     # print total_size
 #     file_object = open(file_path, 'rb')
-#     file_object.seek(start_position)
-#     current_position = start_position
 #     while True:
-#         # exit if enough data was read
-#         if current_position - start_position >= chunk_size:
-#             break
-#         # print(min(subchunk_size, start_position + chunk_size - current_position))
-#         data = file_object.read(min(subchunk_size, start_position + chunk_size - current_position))
+#         data = file_object.read(chunk_size)
 #         # print len(data)
 #         if not data:
 #             file_object.close()
 #             break
 #         yield data
-#         current_position = file_object.tell()
-#         # print(data)
 #         if callback_function:
-#             callback_function(file_path, current_position - start_position, chunk_size)
-#     file_object.close()
+#             callback_function(file_path, len(data), total_size)
 #     raise StopIteration()
+
+
+# class ChunkReader():
+#     """Read <chunk_size> bytes of the input file starting from <start_position>.
+#     The <callback_function> is called after each subchunk of data is uploaded"""
+#
+#     def __init__(self, file_path, start_position, chunk_size, subchunk_size=2 ** 20, callback_function=None):
+#         self.file_path = file_path
+#         self.start_position = start_position
+#         if chunk_size < 1 and self.file_path:
+#             self.chunk_size = os.path.getsize(file_path)
+#         else:
+#             self.chunk_size = chunk_size
+#         self.subchunk_size = subchunk_size
+#         self.callback_function = callback_function
+#
+#     def get_chunk_generator(self):
+#         """Return a generator that reads <chunk_size> bytes of the input file starting from <start_position>.
+#         This function calls the <callback_function> after each subchunk of data is generated"""
+#         if not self.file_path:
+#             return ''
+#
+#         def chunk_generator():
+#             total_size = os.path.getsize(self.file_path)
+#             file_object = open(self.file_path, 'rb')
+#             file_object.seek(self.start_position)
+#             current_position = self.start_position
+#             # print("Start pos=%i, Current pos=%i, Chunk Size=%i", self.start_position, current_position, self.chunk_size)
+#             while True:
+#                 # exit if enough data was read
+#                 if current_position - self.start_position >= self.chunk_size:
+#                     break
+#                 # print(min(subchunk_size, start_position + chunk_size - current_position))
+#                 data = file_object.read(
+#                     min(self.subchunk_size, self.start_position + self.chunk_size - current_position))
+#                 # print len(data)
+#                 if not data:
+#                     file_object.close()
+#                     break
+#                 yield data
+#                 current_position = file_object.tell()
+#                 # print(data)
+#                 if self.callback_function:
+#                     self.callback_function(self.file_path, current_position - self.start_position, self.chunk_size)
+#             file_object.close()
+#             raise StopIteration()
+#
+#         return chunk_generator()
+#
+#     def get_data(self):
+#         if not self.file_path:
+#             return b""
+#         file_object = open(self.file_path, 'rb')
+#         file_object.seek(self.start_position)
+#         data = file_object.read(self.chunk_size)
+#         file_object.close()
+#         return data
 
 
 class ChunkFileObject(object):
@@ -249,7 +226,7 @@ class ChunkFileObject(object):
             print('read %i bytes' %args[0]) # TODO: replace this with a callback function
             return self.file_obj.read(*args, **kwargs)
         else:
-             return self.file_obj.read(self.end - self.tell())
+             return self.file_obj.read(self.end - self.file_obj.tell()) # FIXME: self.tell or file_object.tell???
 
     def seek(self, *args, **kwargs):
         if args:
