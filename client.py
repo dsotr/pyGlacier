@@ -130,7 +130,6 @@ class GlacierClient:
         # g = ChunkReader(archive_path, part_number * part_size, part_size,
         #                 callback_function=progress_bar(
         #                     "File %s - chunk %i" % (os.path.basename(archive_path), part_number)))
-        # TODO: Verify start and end are correct
         payload = ChunkFileObject(file_path, 'rb', start = part_number * part_size, end = (part_number + 1) * part_size)
         param.set(GlacierParams.PAYLOAD, payload)
         archive_size = os.path.getsize(archive_path)
@@ -149,18 +148,13 @@ class GlacierClient:
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
         upload_id = init_resp.headers.get('x-amz-multipart-upload-id')
         logging.info(upload_id)
-        # print(init_resp.content.decode().replace('\\\\n', '\n'))
-        # return init_resp
-        # location = init_resp.headers.get('Location')
         # Setup tree hashes for archive parts
         archive_size = os.path.getsize(archive_path)
         part_size = settings.DEFAULT_PART_SIZE  # 256Mb
-        start_byte = 0
         part_bytes_hashes = [None] * int(
             archive_size / part_size + min(1, archive_size % part_size))  # number of archive parts
-        if self.debug:
-            print("Archive size:%s\nPart size:%s\n# parts:%s\n******************"
-                  % (archive_size, part_size, len(part_bytes_hashes)))
+        logging.debug("Archive size: %i - Part size: %i - # parts: %i", archive_size, part_size, len(part_bytes_hashes))
+        start_byte = 0
         part_number = 0
         while start_byte < archive_size:
             part_bytes_hashes[part_number] = tree_hash(archive_path, start_byte, part_size)
@@ -168,17 +162,15 @@ class GlacierClient:
             start_byte += part_size
         archive_tree_hash = bytes_to_hex(build_tree_from_root(part_bytes_hashes)[-1][0])
         part_hex_hashes = list(map(bytes_to_hex, part_bytes_hashes))
-        logging.debug("Archive hash: %s" % archive_tree_hash)
-        logging.debug("Parts hashes: \n%s" % '\n'.join(part_hex_hashes))
-
+        logging.debug("Archive hash: %s", archive_tree_hash)
+        logging.debug("Parts hashes: \n%s", '\n'.join(part_hex_hashes))
+        # Upload parts
         for i in range(len(part_hex_hashes)):
             part_resp = self.upload_part(vault_name, upload_id, part_size, i,
                                          archive_path, archive_tree_hash, part_hex_hashes[i])
-            if self.debug:
-                print(part_resp)
+            logging.debug("Part %i response: %s", i, part_resp)
         compl_resp = self.complete_multipart_upload(vault_name, upload_id, archive_size, archive_tree_hash)
-        if self.debug:
-            print(compl_resp)
+        logging.debug("Complete part response: %s", compl_resp)
         return compl_resp
 
     def upload_archive(self, file_path, vault_name):
@@ -218,7 +210,7 @@ class GlacierClient:
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
                 response = requests.put(request_url, headers=request_headers,
-                                         data=param.get(GlacierParams.PAYLOAD).get_data())
+                                         data=param.get(GlacierParams.PAYLOAD))
             elif method == 'DELETE':
                 pass
             else:
