@@ -33,6 +33,7 @@ class GlacierParams:
     PAYLOAD_CONTENT = 'PAYLOAD_CONTENT'
     AMZDATETIME = 'AMZDATETIME'
     DATE = 'DATE'
+    CANONICAL_STRING_HASH = 'CANONICAL_STRING_HASH'
 
     def __init__(self):
         """
@@ -76,11 +77,17 @@ class GlacierParams:
         self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
 
     def get_payload_content(self):
-        # Read payload data and brings the cursor back to 0 so that it can be used again
+        ''' Read payload data and brings the cursor back to 0 so that it can be used again
+        '''
         if self.get(GlacierParams.PAYLOAD_CONTENT):
             return self.get(GlacierParams.PAYLOAD_CONTENT)
         payload = self.get(GlacierParams.PAYLOAD)
+        if not payload:
+            return b''
         content = payload.read()
         payload.seek(0)
         self.set(GlacierParams.PAYLOAD_CONTENT, content)
         return content
+
+    def get_canonical_string_hash(self):
+        return self.get(GlacierParams.CANONICAL_STRING_HASH)

@@ -223,7 +223,7 @@ class ChunkFileObject(object):
                 new_args[0] = self.end - read_bytes - self.start
                 logging.debug("reascaling read length from %i to %i" %(args[0], new_args[0]))
                 args = tuple(new_args)
-            print('read %i bytes' %args[0]) # TODO: replace this with a callback function
+            #print('read %i bytes' %args[0]) # TODO: replace this with a callback function
             return self.file_obj.read(*args, **kwargs)
         else:
              return self.file_obj.read(self.end - self.file_obj.tell()) # FIXME: self.tell or file_object.tell???

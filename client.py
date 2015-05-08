@@ -42,6 +42,10 @@ class GlacierClient:
         return canonical_header
 
     def make_canonical_request(self, param):
+        if param.get_canonical_string_hash():
+            payload_hash = param.get_canonical_string_hash()
+        else:
+            payload_hash = self.signer.hashHex(param.get_payload_content())
         canonical_request_content = [  # self.method,   # self.canonical_uri,   # self.makeCanonicalQueryString(),
                                        # self.makeCanonicalHeaders(param),   # self.makeSignedHeaders(),
                                        # self.signer.hashHex(self.payload)
@@ -51,10 +55,12 @@ class GlacierClient:
                                        self.make_canonical_headers(param),
                                        self.make_signed_headers(),
                                        # self.signer.hashHex(param.get(GlacierParams.PAYLOAD).get_data()),
-                                       self.signer.hashHex(param.get_payload_content()),
+
+                                       # self.signer.hashHex(param.get_payload_content()),
+                                       payload_hash,
         ]
         canonical_string = '\n'.join(canonical_request_content)
-        logging.info('Canonical String\n' + canonical_string + '\n')
+        logging.info('Canonical String\n%s\n', canonical_string)
         return canonical_string
 
     def make_signed_headers(self):
@@ -74,10 +80,7 @@ class GlacierClient:
         string_to_sign = '\n'.join(
             [self.signer.algorithm, param.get(GlacierParams.AMZDATETIME), self.make_credential_scope(param),
              self.signer.hashHex(self.make_canonical_request(param).encode('utf-8'))])
-        if self.debug:
-            print("String to sign:")
-            print(string_to_sign)
-            print("******************")
+        logging.info("String to sign: %s", string_to_sign)
         return string_to_sign
 
     def make_signature(self, param):
@@ -105,25 +108,31 @@ class GlacierClient:
         return self.perform_request(param)
 
     def initiate_multipart_upload(self, vault_name, multipard_desc, part_size=settings.DEFAULT_PART_SIZE):
+        logging.info("Initiate for %s", multipard_desc)
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads' % vault_name)
         param.set_header('x-amz-archive-description', multipard_desc)
         param.set_header('x-amz-part-size', str(part_size))
+        # payload = ChunkFileObject(file_path, 'rb')
+        # param.set(GlacierParams.PAYLOAD, payload)
         self.make_authorization_header(param)
         return self.perform_request(param)
 
     def complete_multipart_upload(self, vault_name, upload_id, archive_size, archive_tree_hash):
+        logging.info("Complete multipart for %s", upload_id)
         param = GlacierParams()
-        param.set(GlacierParams.METHOD, 'PUT')
+        param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
         param.set_header('x-amz-archive-size', archive_size)
         param.set_header('x-amz-sha256-tree-hash​', archive_tree_hash)
+        # payload = ChunkFileObject(file_path, 'rb')
+        # param.set(GlacierParams.PAYLOAD, payload)
         self.make_authorization_header(param)
         return self.perform_request(param)
 
     def upload_part(self, vault_name, upload_id, part_size, part_number, archive_path, archive_hash, part_tree_hash):
-        logging.info("uploading part %i, file from position %i to %i", part_number, part_number * part_size, part_size)
+        logging.info("uploading part %i, file from position %i to %i", part_number, part_number * part_size, (part_number+1) * part_size )
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
@@ -134,46 +143,52 @@ class GlacierClient:
         param.set(GlacierParams.PAYLOAD, payload)
         archive_size = os.path.getsize(archive_path)
         param.set_header('Content-Length', str(min(archive_size - part_number * part_size, part_size)))
-        param.set_header('Content-Range', "%s-%s/*"
-                         % (part_number * part_size, min(archive_size, (part_number + 1) * part_size)))
-        param.set_header('x-amz-content-sha256', archive_hash)
+        param.set_header('Content-Range', "bytes %s-%s/*"
+                         % (part_number * part_size, min(archive_size, (part_number + 1) * part_size) - 1))
+        # logging.debug('Content-Range:bytes %i-%i/*', part_number * part_size, min(archive_size, (part_number + 1) * part_size ) -1 )
+        param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
         # part_tree_hash = tree_hash(archive_path, part_number*part_size, part_size)
         param.set_header('x-amz-sha256-tree-hash', part_tree_hash)
+        # Set canonical string payload hash to the entire archive hash
+        # param.set(GlacierParams.CANONICAL_STRING_HASH, archive_hash)
         self.make_authorization_header(param)
         return self.perform_request(param)
 
     def multiupload_archive(self, vault_name, archive_path):
         # initiate multipart upload
-        logging.info("multiupload_archive. Valut: %s Path: %s" % (vault_name, archive_path))
+        logging.info("multiupload_archive. Valut: %s Path: %s", vault_name, archive_path)
         init_resp = self.initiate_multipart_upload(vault_name, self.get_archive_name(archive_path))
         upload_id = init_resp.headers.get('x-amz-multipart-upload-id')
-        logging.info(upload_id)
+        logging.info("Upload ID received: %s" , upload_id)
+        if not upload_id:
+            logging.error("Invalid upload ID received: %s" , upload_id)
+            raise InvalidIDException()
         # Setup tree hashes for archive parts
         archive_size = os.path.getsize(archive_path)
         part_size = settings.DEFAULT_PART_SIZE  # 256Mb
-        part_bytes_hashes = [None] * int(
+        part_bytes_tree_hashes = [None] * int(
             archive_size / part_size + min(1, archive_size % part_size))  # number of archive parts
-        logging.debug("Archive size: %i - Part size: %i - # parts: %i", archive_size, part_size, len(part_bytes_hashes))
+        logging.debug("Archive size: %i - Part size: %i - # parts: %i", archive_size, part_size, len(part_bytes_tree_hashes))
         start_byte = 0
         part_number = 0
         while start_byte < archive_size:
-            part_bytes_hashes[part_number] = tree_hash(archive_path, start_byte, part_size)
+            part_bytes_tree_hashes[part_number] = tree_hash(archive_path, start_byte, part_size)
             part_number += 1
             start_byte += part_size
-        archive_tree_hash = bytes_to_hex(build_tree_from_root(part_bytes_hashes)[-1][0])
-        part_hex_hashes = list(map(bytes_to_hex, part_bytes_hashes))
+        archive_tree_hash = bytes_to_hex(build_tree_from_root(part_bytes_tree_hashes)[-1][0])
+        part_hex_tree_hashes = list(map(bytes_to_hex, part_bytes_tree_hashes))
         logging.debug("Archive hash: %s", archive_tree_hash)
-        logging.debug("Parts hashes: \n%s", '\n'.join(part_hex_hashes))
+        logging.debug("Parts hashes: \n%s", '\n'.join(part_hex_tree_hashes))
         # Upload parts
-        for i in range(len(part_hex_hashes)):
+        for i in range(len(part_hex_tree_hashes)):
             part_resp = self.upload_part(vault_name, upload_id, part_size, i,
-                                         archive_path, archive_tree_hash, part_hex_hashes[i])
+                                         archive_path, archive_tree_hash, part_hex_tree_hashes[i])
             logging.debug("Part %i response: %s", i, part_resp)
         compl_resp = self.complete_multipart_upload(vault_name, upload_id, archive_size, archive_tree_hash)
         logging.debug("Complete part response: %s", compl_resp)
         return compl_resp
 
-    def upload_archive(self, file_path, vault_name):
+    def upload_archive(self, vault_name, file_path):
         '''
         Upload a file in a single upload (not multipart)
         :param file_path: path of the file to upload
@@ -188,7 +203,7 @@ class GlacierClient:
         content = ChunkFileObject(file_path, 'rb')
         param.set(GlacierParams.PAYLOAD, content)
         param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
-        #param.set_header('x-amz-sha256-tree-hash', bytes_to_hex(tree_hash(file_path, 0, content.end)))
+        param.set_header('x-amz-sha256-tree-hash', bytes_to_hex(tree_hash(file_path, 0, content.end)))
         self.make_authorization_header(param)
         return self.perform_request(param)
 
@@ -198,19 +213,26 @@ class GlacierClient:
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
         request_url = endpoint + '?' + self.make_canonical_query_string(param)
         response = None
-        logging.info("%s %s", method, endpoint)
+        # logging.info("%s %s", method, endpoint)
         if self.debug:
             print('Request URL = ' + request_url)
         # Perform request and get response
         try:
             if method == 'POST':
-                response = requests.post(request_url, headers=request_headers,
-                                         data=param.get(GlacierParams.PAYLOAD))
+                payload = param.get(GlacierParams.PAYLOAD)
+                if payload:
+                    response = requests.post(request_url, headers=request_headers, data=payload)
+                else:
+                    response = requests.post(request_url, headers=request_headers)
             elif method == 'GET':
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
+                payload = param.get(GlacierParams.PAYLOAD)
+                # # use string as content
+                # content=payload.read().decode()
                 response = requests.put(request_url, headers=request_headers,
-                                         data=param.get(GlacierParams.PAYLOAD))
+                                         data=payload)
+                payload.close()
             elif method == 'DELETE':
                 pass
             else:
@@ -220,12 +242,14 @@ class GlacierClient:
             raise
 
         logging.debug("Response: %s", str(response))
+        if response.status_code > 299: # Some error
+            logging.error("Error in response: %s", response.text)
         # Log request / response
         try:
                 if response.headers:
                     response.headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
                     self.logger.log_response(response.headers, response.text, param)
-                    logging.info("Logged response")
+                    # logging.info("Logged response")
                 else:
                     logging.info("Empty header response")
         except:
@@ -246,17 +270,21 @@ class InvalidRegionException(Exception):
 class InvalidMethodException(Exception):
     pass
 
+class InvalidIDException(Exception):
+    pass
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='example.log', format='%(asctime)s\t%(levelname)s\t%(funcName)s()\t%(message)s', level=logging.DEBUG)
+    logging.basicConfig(filename='trace.log', format='%(asctime)s\t%(levelname)s\t%(funcName)s()\t%(message)s', level=logging.DEBUG)
+    # logging.basicConfig(Zstream=sys.stdout, format='%(asctime)s\t%(levelname)s\t%(funcName)s()\t%(message)s', level=logging.DEBUG)
     logging.info('**** Starting new log ****')
     # logging.info('test')
     # logging.warning('test')
     c = GlacierClient('us-east-1', debug=False)
     file_path = "testupload.txt"
     #print(c.multiupload_archive('Foto', file_path))
-    # response = c.multiupload_archive('Foto', file_path)
-    response = c.upload_archive(file_path, 'Foto')
+    # response = c.upload_archive('Foto', file_path)
+    response = c.multiupload_archive('Foto', file_path)
+    # response = c.upload_archive('Foto', file_path)
     # response = c.list_vaults()
     print(response.status_code)
     print(response.text)
