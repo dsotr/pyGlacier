@@ -125,9 +125,7 @@ class GlacierClient:
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
         param.set_header('x-amz-archive-size', archive_size)
-        param.set_header('x-amz-sha256-tree-hash​', archive_tree_hash)
-        # payload = ChunkFileObject(file_path, 'rb')
-        # param.set(GlacierParams.PAYLOAD, payload)
+        param.set_header('x-amz-sha256-tree-hash', archive_tree_hash)
         self.make_authorization_header(param)
         return self.perform_request(param)
 
@@ -184,6 +182,9 @@ class GlacierClient:
             part_resp = self.upload_part(vault_name, upload_id, part_size, i,
                                          archive_path, archive_tree_hash, part_hex_tree_hashes[i])
             logging.debug("Part %i response: %s", i, part_resp)
+            if part_resp.status_code > 299:
+                logging.debug("Stopping upload due to failed response for upload part %i", i)
+                return None
         compl_resp = self.complete_multipart_upload(vault_name, upload_id, archive_size, archive_tree_hash)
         logging.debug("Complete part response: %s", compl_resp)
         return compl_resp
@@ -275,18 +276,18 @@ class InvalidIDException(Exception):
 
 if __name__ == '__main__':
     logging.basicConfig(filename='trace.log', format='%(asctime)s\t%(levelname)s\t%(funcName)s()\t%(message)s', level=logging.DEBUG)
-    # logging.basicConfig(Zstream=sys.stdout, format='%(asctime)s\t%(levelname)s\t%(funcName)s()\t%(message)s', level=logging.DEBUG)
+    # logging.basicConfig(stream=sys.stdout, format='%(asctime)s\t%(levelname)s\t%(funcName)s()\t%(message)s', level=logging.DEBUG)
     logging.info('**** Starting new log ****')
     # logging.info('test')
     # logging.warning('test')
     c = GlacierClient('us-east-1', debug=False)
-    file_path = "testupload.txt"
+    file_path = "testupload-multi.txt"
     #print(c.multiupload_archive('Foto', file_path))
     # response = c.upload_archive('Foto', file_path)
     response = c.multiupload_archive('Foto', file_path)
     # response = c.upload_archive('Foto', file_path)
     # response = c.list_vaults()
-    print(response.status_code)
-    print(response.text)
-    print(response.encoding)
-    print(response.headers)
+    # print(response.status_code)
+    # print(response.text)
+    # print(response.encoding)
+    # print(response.headers)

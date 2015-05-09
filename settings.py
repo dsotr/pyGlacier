@@ -83,6 +83,7 @@ class GlacierParams:
             return self.get(GlacierParams.PAYLOAD_CONTENT)
         payload = self.get(GlacierParams.PAYLOAD)
         if not payload:
+            # return None
             return b''
         content = payload.read()
         payload.seek(0)

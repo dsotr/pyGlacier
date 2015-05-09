@@ -193,40 +193,44 @@ class ChunkFileObject(object):
 
     def __init__(self, *args, **kwds):
         logging.debug('Instantiate FileChunkObject with args: %s and kwywords: %s' %(args, kwds))
+        self.bytestep = 1024 * 64 # 64 Kbytes
         # read start from keyword args (and remove it). If start is not present defaults to 0
         self.start = kwds.pop('start', 0)
         # read end from keyword args (and remove it).
         self.end = kwds.pop('end', None)
         # Create a file object from input args
         self.file_obj = open(*args, **kwds)
-        # If end is not present defaults to file size
-        if not self.end:
-            # seek the end of file to evaluate file size
-            self.file_obj.seek(0, os.SEEK_END)
+        self.mode = self.file_obj.mode
+        # seek the end of file to evaluate file size
+        self.file_obj.seek(0, os.SEEK_END)
+        # If end is not present or too large set it to file size
+        if not self.end or self.end > self.file_obj.tell():
             self.end = self.file_obj.tell()
         # reset file index to 0
-        self.file_obj.seek(0)
+        self.seek(0)
 
-    def __enter__(self):
-        return self.file_obj
-
-    def __exit__(self, *args):
-        print('done')
-        self.file_obj.close()
+    # def __enter__(self):
+    #     return self.file_obj
+    #
+    # def __exit__(self, *args):
+    #     print('done')
+    #     self.file_obj.close()
 
     def read(self, *args, **kwargs):
         if args:
             current_cursor = self.file_obj.tell()
             read_bytes = current_cursor - self.start
-            if self.start + read_bytes + int(args[0]) > self.end:
+            if current_cursor + int(args[0]) > self.end:
                 new_args = list(args)
-                new_args[0] = self.end - read_bytes - self.start
+                new_args[0] = self.end - current_cursor
                 logging.debug("reascaling read length from %i to %i" %(args[0], new_args[0]))
                 args = tuple(new_args)
-            #print('read %i bytes' %args[0]) # TODO: replace this with a callback function
+            print('Serving %i bytes (%i - %i) from ChunkFileReader[%i-%i] read(bytes) method' %(
+                args[0], current_cursor, current_cursor+args[0], self.start, self.end)) # TODO: replace this with a callback function
             return self.file_obj.read(*args, **kwargs)
         else:
-             return self.file_obj.read(self.end - self.file_obj.tell()) # FIXME: self.tell or file_object.tell???
+            print("Serving %i bytes from ChunkFileReader read() method" %(self.end - self.file_obj.tell()))
+            return self.file_obj.read(self.end - self.file_obj.tell())
 
     def seek(self, *args, **kwargs):
         if args:
@@ -254,9 +258,29 @@ class ChunkFileObject(object):
         self.end = end
         self.seek(0)
 
-    def __getattr__(self, attr):
-        # Fallback to file object method if the called method wasn't overridden
-        return getattr(self.file_obj, attr)
+    def close(self):
+        return self.file_obj.close()
+
+    # def __iter__(self, *args, **kwargs):
+    #     logging.error("iter")
+    #     return self
+    #
+    # def __next__(self, *args, **kwargs):
+    #     print("__next__")
+    #     data = self.read(self.bytestep)
+    #     if data:
+    #         return data
+    #     else:
+    #         raise StopIteration
+    #
+    # def next(self, *args, **kwargs):
+    #     print("next")
+    #
+    # def __getattr__(self, attr):
+    #     # Fallback to file object method if the called method wasn't overridden
+    #     print("Called method %s of class ChunkFileReader" %attr)
+    #     return getattr(self.file_obj, attr)
+    #     # return None
 
 
 def progress_bar(title):
