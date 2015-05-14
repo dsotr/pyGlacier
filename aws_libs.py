@@ -1,6 +1,7 @@
 # -*- coding: latin-1 -*-
 
 import sys, os, hashlib, hmac, codecs, logging, settings
+from util.progressbar import AnimatedProgressBar
 
 
 class Signer:
@@ -198,6 +199,8 @@ class ChunkFileObject(object):
         self.start = kwds.pop('start', 0)
         # read end from keyword args (and remove it).
         self.end = kwds.pop('end', None)
+        # callback function to show reading progress
+        self.callback = kwds.pop('callback', None)
         # Create a file object from input args
         self.file_obj = open(*args, **kwds)
         self.mode = self.file_obj.mode
@@ -225,8 +228,10 @@ class ChunkFileObject(object):
                 new_args[0] = self.end - current_cursor
                 logging.debug("reascaling read length from %i to %i" %(args[0], new_args[0]))
                 args = tuple(new_args)
-            print('Serving %i bytes (%i - %i) from ChunkFileReader[%i-%i] read(bytes) method' %(
-                args[0], current_cursor, current_cursor+args[0], self.start, self.end)) # TODO: replace this with a callback function
+            # print('Serving %i bytes (%i - %i) from ChunkFileReader[%i-%i] read(bytes) method' %(
+            #     args[0], current_cursor, current_cursor+args[0], self.start, self.end)) # TODO: replace this with a callback function
+            if self.callback:
+                self.callback(self.start, self.end, args[0])
             return self.file_obj.read(*args, **kwargs)
         else:
             print("Serving %i bytes from ChunkFileReader read() method" %(self.end - self.file_obj.tell()))
@@ -283,10 +288,14 @@ class ChunkFileObject(object):
     #     # return None
 
 
-def progress_bar(title):
-    def progress(x, y, z):
-        print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')  # , flush=True)
+def progress_bar(title, start, end):
 
+    p = AnimatedProgressBar(start = 0, end = end - start, format=title+' [%(fill)s>%(blank)s] %(progress)s%%', width=25)
+
+    def progress(x, y, z):
+        # print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')  # , flush=True)
+        p + z
+        p.show_progress()
     return progress
 
 if __name__=='__main__':
