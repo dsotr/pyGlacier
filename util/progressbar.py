@@ -1,3 +1,5 @@
+# Courtesy of https://github.com/anler/progressbar
+
 import sys
 import time
 
