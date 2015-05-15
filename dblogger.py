@@ -12,7 +12,7 @@ def convert_dict_keys_to_alphanum(source_dict):
     )
 
 
-class Logger():
+class DBLogger():
     def __init__(self, database_path):
         self.database_path = database_path
         self.conn = None
@@ -99,7 +99,7 @@ class Logger():
 
 
 if __name__ == '__main__':
-    logger = Logger('database.db')
+    logger = DBLogger('database.db')
     headers = {'authorization': datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')}
     logger.log('requests', headers)
     # print(logger.get_columns('requests'))

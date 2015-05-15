@@ -5,6 +5,9 @@ from util.progressbar import AnimatedProgressBar
 
 
 class Signer:
+    '''
+    Utility class for signing requests with the amazon keys
+    '''
     def __init__(self):
         # Read AWS access key from env. variables or configuration file
         self.access_key = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -39,20 +42,6 @@ class Signer:
         else:
             return hashlib.sha256(content).hexdigest()
 
-    # def treeHash(self, file_path):
-    #     l = []
-    #     # f=open(file_path, 'rb')
-    #     count = 0
-    #     totlen = float(os.path.getsize(file_path))
-    #     for data in fileChunkGenerator(file_path):
-    #         l.append(hashlib.sha256(data).digest())
-    #         count += len(data)
-    #         logging.info('%i %%' % (count * 100 / totlen))
-    #     # f.close()
-    #     # print "root built"
-    #     # print build_tree_from_root(l)[-1][0].encode("hex")
-    #     return build_tree_from_root(l)[-1][0].encode("hex")
-
 
 def tree_hash(file_path, start, bytes_number):
     """
@@ -82,7 +71,11 @@ def tree_hash(file_path, start, bytes_number):
 
 
 def build_tree_from_root(root, parent=None):
-    # print root
+    '''
+    :param root: array with the hashes of each 1Mb chunk
+    :param parent: used for recursion
+    :return: the final tree hash byte string
+    '''
     if not parent:
         parent = [root]
     if len(root) < 2:
@@ -102,81 +95,12 @@ def build_tree_from_root(root, parent=None):
 
 
 def bytes_to_hex(b_str):
+    '''
+    Converts an input byte string to its hex representation
+    :param b_str: input byte string
+    :return: a string with the hex representation of the input
+    '''
     return codecs.encode(b_str, 'hex_codec').decode()
-
-
-# def fileChunkGenerator(file_path, chunk_size=1048576,
-#                        callback_function=None):  # =lambda x,y,z: sys.stdout.write(str(float(y)/z)+'\n') ): # 1048576 = 1Mb
-#     total_size = os.path.getsize(file_path)
-#     # print total_size
-#     file_object = open(file_path, 'rb')
-#     while True:
-#         data = file_object.read(chunk_size)
-#         # print len(data)
-#         if not data:
-#             file_object.close()
-#             break
-#         yield data
-#         if callback_function:
-#             callback_function(file_path, len(data), total_size)
-#     raise StopIteration()
-
-
-# class ChunkReader():
-#     """Read <chunk_size> bytes of the input file starting from <start_position>.
-#     The <callback_function> is called after each subchunk of data is uploaded"""
-#
-#     def __init__(self, file_path, start_position, chunk_size, subchunk_size=2 ** 20, callback_function=None):
-#         self.file_path = file_path
-#         self.start_position = start_position
-#         if chunk_size < 1 and self.file_path:
-#             self.chunk_size = os.path.getsize(file_path)
-#         else:
-#             self.chunk_size = chunk_size
-#         self.subchunk_size = subchunk_size
-#         self.callback_function = callback_function
-#
-#     def get_chunk_generator(self):
-#         """Return a generator that reads <chunk_size> bytes of the input file starting from <start_position>.
-#         This function calls the <callback_function> after each subchunk of data is generated"""
-#         if not self.file_path:
-#             return ''
-#
-#         def chunk_generator():
-#             total_size = os.path.getsize(self.file_path)
-#             file_object = open(self.file_path, 'rb')
-#             file_object.seek(self.start_position)
-#             current_position = self.start_position
-#             # print("Start pos=%i, Current pos=%i, Chunk Size=%i", self.start_position, current_position, self.chunk_size)
-#             while True:
-#                 # exit if enough data was read
-#                 if current_position - self.start_position >= self.chunk_size:
-#                     break
-#                 # print(min(subchunk_size, start_position + chunk_size - current_position))
-#                 data = file_object.read(
-#                     min(self.subchunk_size, self.start_position + self.chunk_size - current_position))
-#                 # print len(data)
-#                 if not data:
-#                     file_object.close()
-#                     break
-#                 yield data
-#                 current_position = file_object.tell()
-#                 # print(data)
-#                 if self.callback_function:
-#                     self.callback_function(self.file_path, current_position - self.start_position, self.chunk_size)
-#             file_object.close()
-#             raise StopIteration()
-#
-#         return chunk_generator()
-#
-#     def get_data(self):
-#         if not self.file_path:
-#             return b""
-#         file_object = open(self.file_path, 'rb')
-#         file_object.seek(self.start_position)
-#         data = file_object.read(self.chunk_size)
-#         file_object.close()
-#         return data
 
 
 class ChunkFileObject(object):
@@ -194,7 +118,6 @@ class ChunkFileObject(object):
 
     def __init__(self, *args, **kwds):
         logging.debug('Instantiate FileChunkObject with args: %s and kwywords: %s' %(args, kwds))
-        self.bytestep = 1024 * 64 # 64 Kbytes
         # read start from keyword args (and remove it). If start is not present defaults to 0
         self.start = kwds.pop('start', 0)
         # read end from keyword args (and remove it).
@@ -212,13 +135,6 @@ class ChunkFileObject(object):
         # reset file index to 0
         self.seek(0)
 
-    # def __enter__(self):
-    #     return self.file_obj
-    #
-    # def __exit__(self, *args):
-    #     print('done')
-    #     self.file_obj.close()
-
     def read(self, *args, **kwargs):
         if args:
             current_cursor = self.file_obj.tell()
@@ -234,7 +150,7 @@ class ChunkFileObject(object):
                 self.callback(self.start, self.end, args[0])
             return self.file_obj.read(*args, **kwargs)
         else:
-            print("Serving %i bytes from ChunkFileReader read() method" %(self.end - self.file_obj.tell()))
+            # print("Serving %i bytes from ChunkFileReader read() method" %(self.end - self.file_obj.tell()))
             return self.file_obj.read(self.end - self.file_obj.tell())
 
     def seek(self, *args, **kwargs):
@@ -266,30 +182,16 @@ class ChunkFileObject(object):
     def close(self):
         return self.file_obj.close()
 
-    # def __iter__(self, *args, **kwargs):
-    #     logging.error("iter")
-    #     return self
-    #
-    # def __next__(self, *args, **kwargs):
-    #     print("__next__")
-    #     data = self.read(self.bytestep)
-    #     if data:
-    #         return data
-    #     else:
-    #         raise StopIteration
-    #
-    # def next(self, *args, **kwargs):
-    #     print("next")
-    #
-    # def __getattr__(self, attr):
-    #     # Fallback to file object method if the called method wasn't overridden
-    #     print("Called method %s of class ChunkFileReader" %attr)
-    #     return getattr(self.file_obj, attr)
-    #     # return None
 
 
 def progress_bar(title, start, end):
-
+    '''
+    Returns a progress bar function which displays the progress through an AnimatedProgressBar
+    :param title: prefix name to display
+    :param start: starting position of the file chunk
+    :param end: last byte position of the file chunk
+    :return: a function which displays the progress update after every call
+    '''
     p = AnimatedProgressBar(start = 0, end = end - start, format=title+' [%(fill)s>%(blank)s] %(progress)s%%', width=25)
 
     def progress(x, y, z):
@@ -297,10 +199,3 @@ def progress_bar(title, start, end):
         p + z
         p.show_progress()
     return progress
-
-if __name__=='__main__':
-    fo = ChunkFileObject('testupload.txt')
-    fo.set_range(0, 2340)
-    s = fo.read(2000)
-    s += fo.read(2000)
-    print(len(s))

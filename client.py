@@ -10,7 +10,7 @@ from settings import GlacierParams
 import json
 
 from aws_libs import Signer, tree_hash, bytes_to_hex, build_tree_from_root, progress_bar, ChunkFileObject
-from logger import Logger
+from dblogger import DBLogger
 
 
 
@@ -18,7 +18,7 @@ class GlacierClient:
     def __init__(self, region='us-east-1', debug=False):
         self.signer = Signer()
         # print(os.getcwd())
-        self.logger = Logger('database.db')
+        self.logger = DBLogger('database.db')
         # self.service 			= 'glacier'
         if region in settings.REGIONS:
             self.region = region
@@ -47,21 +47,15 @@ class GlacierClient:
             payload_hash = param.get_canonical_string_hash()
         else:
             payload_hash = self.signer.hashHex(param.get_payload_content())
-        canonical_request_content = [  # self.method,   # self.canonical_uri,   # self.makeCanonicalQueryString(),
-                                       # self.makeCanonicalHeaders(param),   # self.makeSignedHeaders(),
-                                       # self.signer.hashHex(self.payload)
-                                       param.get(GlacierParams.METHOD),
+        canonical_request_content = [  param.get(GlacierParams.METHOD),
                                        param.get(GlacierParams.URI),
                                        self.make_canonical_query_string(param),
                                        self.make_canonical_headers(param),
                                        self.make_signed_headers(),
-                                       # self.signer.hashHex(param.get(GlacierParams.PAYLOAD).get_data()),
-
-                                       # self.signer.hashHex(param.get_payload_content()),
                                        payload_hash,
         ]
         canonical_string = '\n'.join(canonical_request_content)
-        logging.info('Canonical String\n%s\n', canonical_string)
+        logging.debug('Canonical String\n%s\n', canonical_string)
         return canonical_string
 
     def make_signed_headers(self):
@@ -124,7 +118,7 @@ class GlacierClient:
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
         param.set_header('x-amz-archive-size', archive_size)
-        # param.set_header('x-amz-sha256-tree-hash', archive_tree_hash)
+        param.set_header('x-amz-sha256-tree-hash', archive_tree_hash)
         self.make_authorization_header(param)
         return self.perform_request(param)
 
@@ -135,7 +129,7 @@ class GlacierClient:
         param.set(GlacierParams.METHOD, 'PUT')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
         payload = ChunkFileObject(file_path, 'rb', start = part_number * part_size, end = (part_number + 1) * part_size,
-                                  callback = progress_bar("part %i" %part_number, part_number * part_size, min(archive_size, (part_number + 1) * part_size)))
+                                  callback = progress_bar("part %i" %part_number, part_number * part_size, min(archive_size, (part_number + 1) * part_size)-1))
         param.set(GlacierParams.PAYLOAD, payload)
         param.set_header('Content-Length', str(min(archive_size - part_number * part_size, part_size)))
         param.set_header('Content-Range', "bytes %s-%s/*"
@@ -274,7 +268,7 @@ if __name__ == '__main__':
     # logging.info('test')
     # logging.warning('test')
     c = GlacierClient('us-east-1', debug=False)
-    file_path = "testupload-multi.txt"
+    file_path = "tests/testupload-multi.txt"
     #print(c.multiupload_archive('Foto', file_path))
     # response = c.upload_archive('Foto', file_path)
     response = c.multiupload_archive('pyGlacier', file_path)
