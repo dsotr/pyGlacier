@@ -72,7 +72,7 @@ class DBLogger():
         stmt = cursor.execute("PRAGMA table_info(%s)" % (table_name,))
         return [item[1] for item in stmt.fetchall()]
 
-    def log(self, table, headers, body, param):
+    def insert(self, table, headers, body, param):
         cursor = self.get_cursor()
         sql_friendly_headers = convert_dict_keys_to_alphanum(headers)
         # add the original headers dictionary to the table
@@ -103,15 +103,15 @@ class DBLogger():
         self.commit_and_close(cursor)
         return result
 
-    def log_request(self, headers, param):
-        return self.log('requests', headers, None, param)
+    def insert_request(self, headers, param):
+        return self.insert('requests', headers, None, param)
 
-    def log_response(self, headers, body, param):
-        return self.log('responses', headers, body, param)
+    def insert_response(self, headers, body, param):
+        return self.insert('responses', headers, body, param)
 
 
 if __name__ == '__main__':
     logger = DBLogger('database.db')
     headers = {'authorization': datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')}
-    logger.log('requests', headers)
+    logger.insert('requests', headers)
     # print(logger.get_columns('requests'))

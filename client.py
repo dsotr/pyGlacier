@@ -18,7 +18,7 @@ class GlacierClient:
     def __init__(self, region='us-east-1', debug=False):
         self.signer = Signer()
         # print(os.getcwd())
-        self.logger = DBLogger('database.db')
+        self.database = DBLogger('database.db')
         # self.service 			= 'glacier'
         if region in settings.REGIONS:
             self.region = region
@@ -237,13 +237,13 @@ class GlacierClient:
         try:
                 if response.headers:
                     response.headers.setdefault('x_amzn_requestid', response.headers.get('x-amzn-RequestId', ''))
-                    self.logger.log_response(response.headers, response.text, param)
+                    self.database.insert_response(response.headers, response.text, param)
                 else:
                     logging.info("Empty header response")
         except:
             logging.error("Unable to log response: %s" % response)
         finally:
-            self.logger.log_request(request_headers, param)
+            self.database.insert_request(request_headers, param)
         return response
 
     def get_archive_name(self, file_path):
@@ -275,6 +275,6 @@ if __name__ == '__main__':
     # response = c.upload_archive('Foto', file_path)
     response = c.list_vaults()
     # print(response.status_code)
-    # print(response.text)
+    print(response.text)
     # print(response.encoding)
     # print(response.headers)
