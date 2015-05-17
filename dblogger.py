@@ -45,6 +45,18 @@ class DBLogger():
             headers text
             )'''
         )
+        # Files table
+        cursor.execute(
+            '''create table if not exists files (
+            id integer primary key,
+            vault text,
+            file_name text,
+            file_size text,
+            upload_date text,
+            inventory_date text
+            )'''
+        )
+
         self.commit_and_close(cursor)
 
     def get_cursor(self):

@@ -271,9 +271,9 @@ if __name__ == '__main__':
     file_path = "tests/testupload-multi.txt"
     #print(c.multiupload_archive('Foto', file_path))
     # response = c.upload_archive('Foto', file_path)
-    response = c.multiupload_archive('pyGlacier', file_path)
+    # response = c.multiupload_archive('pyGlacier', file_path)
     # response = c.upload_archive('Foto', file_path)
-    # response = c.list_vaults()
+    response = c.list_vaults()
     # print(response.status_code)
     # print(response.text)
     # print(response.encoding)
