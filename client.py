@@ -154,13 +154,15 @@ class GlacierClient:
             raise InvalidIDException()
         # Setup tree hashes for archive parts
         archive_size = os.path.getsize(archive_path)
+        self.logger.info("Archive size: %i", archive_size)
         part_size = settings.DEFAULT_PART_SIZE  # 256Mb
         part_bytes_tree_hashes = [None] * int(
             archive_size / part_size + min(1, archive_size % part_size))  # number of archive parts
-        self.logger.debug("Archive size: %i - Part size: %i - # parts: %i", archive_size, part_size, len(part_bytes_tree_hashes))
+        self.logger.debug("Part size: %i - # parts: %i", part_size, len(part_bytes_tree_hashes))
         start_byte = 0
         part_number = 0
         while start_byte < archive_size:
+            self.logger.info("Hashing part %i", part_number)
             part_bytes_tree_hashes[part_number] = tree_hash(archive_path, start_byte, part_size)
             part_number += 1
             start_byte += part_size

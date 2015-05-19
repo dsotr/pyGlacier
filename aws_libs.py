@@ -135,6 +135,9 @@ class ChunkFileObject(object):
         # reset file index to 0
         self.seek(0)
 
+    def __len__(self):
+        return self.end - self.start
+
     def read(self, *args, **kwargs):
         if args:
             current_cursor = self.file_obj.tell()
