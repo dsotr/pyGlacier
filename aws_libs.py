@@ -149,6 +149,9 @@ class ChunkFileObject(object):
                 sliced_chunk_file_object = ChunkFileObject(*self.args, start = start, end = end, callback = self.callback)
                 return sliced_chunk_file_object
 
+    def __iter__(self):
+       while self.tell() < self.end:
+           yield self.read(2**13)
 
     def read(self, *args, **kwargs):
         if args:
