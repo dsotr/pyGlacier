@@ -144,8 +144,11 @@ class ChunkFileObject(object):
         if args and args[0]:
             if type(args[0]) == slice:
                 self.logger.debug("Requested slice: %s", str(args[0]))
-                start = args[0].start
-                end = args[0].stop or self.end
+                start = args[0].start + self.start
+                if args[0].stop:
+                    end = self.start + args[0].stop
+                else:
+                    end = self.end
                 sliced_chunk_file_object = ChunkFileObject(*self.args, start = start, end = end, callback = self.callback)
                 return sliced_chunk_file_object
 
