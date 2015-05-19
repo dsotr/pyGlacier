@@ -117,7 +117,8 @@ class ChunkFileObject(object):
     """
 
     def __init__(self, *args, **kwds):
-        logging.debug('Instantiate FileChunkObject with args: %s and kwywords: %s' %(args, kwds))
+        self.logger = logging.getLogger("[ChunkFileObject]")
+        self.logger.debug('Instantiate FileChunkObject with args: %s and kwywords: %s' %(args, kwds))
         # read start from keyword args (and remove it). If start is not present defaults to 0
         self.start = kwds.pop('start', 0)
         # read end from keyword args (and remove it).
@@ -137,6 +138,16 @@ class ChunkFileObject(object):
 
     def __len__(self):
         return self.end - self.start
+
+    def __getitem__(self, *args, **kwargs):
+        if args and args[0]:
+            if type(args[0]) == slice:
+                self.logger.debug("Requested slice: %s", str(args[0]))
+                start = args[0].start
+                end = args[0].stop or self.end
+                sliced_chunk_file_object = ChunkFileObject(self.file_obj, self.mode, start = start, end = end, callback=self.callback)
+                return sliced_chunk_file_object
+
 
     def read(self, *args, **kwargs):
         if args:
