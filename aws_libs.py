@@ -118,7 +118,6 @@ class ChunkFileObject(object):
 
     def __init__(self, *args, **kwds):
         self.logger = logging.getLogger("[ChunkFileObject]")
-        self.logger.debug('Instantiate FileChunkObject with args: %s and kwywords: %s' %(args, kwds))
         # read start from keyword args (and remove it). If start is not present defaults to 0
         self.args = args
         self.start = kwds.pop('start', 0)
@@ -135,6 +134,7 @@ class ChunkFileObject(object):
         if not self.end or self.end > self.file_obj.tell():
             self.end = self.file_obj.tell()
         # reset file index to 0
+        self.logger.debug('Instantiate FileChunkObject[%s-%s] with args: %s and kwywords: %s' %(self.start, self.end, args, kwds))
         self.seek(0)
 
     def __len__(self):
