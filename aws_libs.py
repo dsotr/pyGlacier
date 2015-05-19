@@ -153,8 +153,8 @@ class ChunkFileObject(object):
                 return sliced_chunk_file_object
 
     def __iter__(self):
-        self.logger.debug("Iterating from position %i (end=%i)", self.tell(), self.end)
         while self.tell() < self.end:
+            self.logger.debug("Iterating from position %i (end=%i)", self.tell(), self.end)
             yield self.read(2**13)
 
     def read(self, *args, **kwargs):
@@ -164,7 +164,7 @@ class ChunkFileObject(object):
             if current_cursor + int(args[0]) > self.end:
                 new_args = list(args)
                 new_args[0] = self.end - current_cursor
-                logging.debug("reascaling read length from %i to %i" %(args[0], new_args[0]))
+                self.logger.debug("reascaling read length from %i to %i" %(args[0], new_args[0]))
                 args = tuple(new_args)
             # print('Serving %i bytes (%i - %i) from ChunkFileReader[%i-%i] read(bytes) method' %(
             #     args[0], current_cursor, current_cursor+args[0], self.start, self.end)) # TODO: replace this with a callback function
