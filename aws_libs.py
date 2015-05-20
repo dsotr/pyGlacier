@@ -152,14 +152,14 @@ class ChunkFileObject(object):
     #             sliced_chunk_file_object = ChunkFileObject(*self.args, start = start, end = end, callback = self.callback)
     #             return sliced_chunk_file_object
 
-    def __iter__(self):
-        self.logger.debug("call to iter method")
-        return self
-
-    def __next__(self):
-        while self.tell() < self.end:
-            self.logger.debug("Iterating from position %i (end=%i)", self.tell(), self.end)
-            yield self.read(2**13)
+    # def __iter__(self):
+    #     self.logger.debug("call to iter method")
+    #     return self
+    #
+    # def __next__(self):
+    #     while self.tell() < self.end:
+    #         self.logger.debug("Iterating from position %i (end=%i)", self.tell(), self.end)
+    #         yield self.read(2**13)
 
     def read(self, *args, **kwargs):
         if args:
