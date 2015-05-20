@@ -137,20 +137,20 @@ class ChunkFileObject(object):
         self.logger.debug('Instantiate FileChunkObject[%s-%s] with args: %s and kwywords: %s' %(self.start, self.end, args, kwds))
         self.seek(0)
 
-    def __len__(self):
-        return self.end - self.start
+    # def __len__(self):
+    #     return self.end - self.start
 
-    def __getitem__(self, *args, **kwargs):
-        if args and args[0]:
-            if type(args[0]) == slice:
-                self.logger.debug("Requested slice: %s", str(args[0]))
-                start = args[0].start + self.start
-                if args[0].stop:
-                    end = self.start + args[0].stop
-                else:
-                    end = self.end
-                sliced_chunk_file_object = ChunkFileObject(*self.args, start = start, end = end, callback = self.callback)
-                return sliced_chunk_file_object
+    # def __getitem__(self, *args, **kwargs):
+    #     if args and args[0]:
+    #         if type(args[0]) == slice:
+    #             self.logger.debug("Requested slice: %s", str(args[0]))
+    #             start = args[0].start + self.start
+    #             if args[0].stop:
+    #                 end = self.start + args[0].stop
+    #             else:
+    #                 end = self.end
+    #             sliced_chunk_file_object = ChunkFileObject(*self.args, start = start, end = end, callback = self.callback)
+    #             return sliced_chunk_file_object
 
     def __iter__(self):
         self.logger.debug("call to iter method")
