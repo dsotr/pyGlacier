@@ -1,5 +1,6 @@
 # -*- coding: latin-1 -*-
 
+import http.client
 import urllib.parse
 import os
 import sys
@@ -230,8 +231,15 @@ class GlacierClient:
                 response = requests.get(request_url, headers=request_headers)
             elif method == 'PUT':
                 payload = param.get(GlacierParams.PAYLOAD)
-                response = requests.put(request_url, headers=request_headers,
-                                         data=payload)
+                # response = requests.put(request_url, headers=request_headers,
+                #                          data=payload)
+                # Try request using http.client module
+
+                self.logger.info(request_url)
+                con = http.client.HTTPSConnection('glacier.us-east-1.amazonaws.com')
+                con.request("PUT", request_url[39:], body=payload, headers = request_headers)
+                resp = con.getresponse()
+                self.logger.info(resp)
                 payload.close()
             elif method == 'DELETE':
                 pass
@@ -245,7 +253,7 @@ class GlacierClient:
             if response.status_code > 299: # Some error
                 self.logger.error("Error in response: %s", response.text)
         else:
-            self.logger.error("No response received", response.text)
+            self.logger.error("No response received: %s", response)
 
         # Log request / response
         try:
