@@ -285,9 +285,10 @@ if __name__ == '__main__':
     logging.config.dictConfig(config)
     c = GlacierClient('us-east-1', debug=False)
     while True:
-        cmd = input("Enter upload path:")
+        cmd = input("Enter upload path[default tests/test.txt]:")
         if cmd=='exit':
             break
+        cmd = cmd or 'tests/test.txt'
         archive_path = os.path.abspath(cmd)
         yn = input("Upload %s [y/n]?" %archive_path)
         if yn == 'y':

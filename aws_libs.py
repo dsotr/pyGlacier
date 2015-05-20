@@ -156,7 +156,7 @@ class ChunkFileObject(object):
         self.logger.debug("call to iter method")
         return self
 
-    def next(self):
+    def __next__(self):
         while self.tell() < self.end:
             self.logger.debug("Iterating from position %i (end=%i)", self.tell(), self.end)
             yield self.read(2**13)
