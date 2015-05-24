@@ -285,6 +285,10 @@ if __name__ == '__main__':
         config = json.load(f)
     logging.config.dictConfig(config)
     c = GlacierClient('us-east-1', debug=False)
+    if len(sys.argv) > 1:
+        print(sys.argv)
+        c.multiupload_archive('Foto',sys.argv[1])
+        sys.exit(0)
     while True:
         cmd = input("Enter upload path[default tests/test.txt]:")
         if cmd=='exit':
