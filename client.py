@@ -185,6 +185,24 @@ class GlacierClient:
         self.logger.info("Complete part response: %s", compl_resp.text)
         return compl_resp
 
+    def list_multuploads(self, vault_name):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'GET')
+        param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads' %vault_name)
+        self.make_authorization_header(param)
+        list_resp = self.perform_request(param)
+        self.logger.info("Multiupload list: %s", list_resp.text)
+        return list_resp
+
+    def abort_multipart_upload(self, vault_name, upload_id):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'DELETE')
+        param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' %(vault_name,upload_id))
+        self.make_authorization_header(param)
+        resp = self.perform_request(param)
+        self.logger.info("Archive delete result: %s", resp.status_code)
+        return resp
+
     def upload_archive(self, vault_name, file_path):
         '''
         Upload a file in a single upload (not multipart)
@@ -235,7 +253,7 @@ class GlacierClient:
                                          data=payload)
                 payload.close()
             elif method == 'DELETE':
-                pass
+                response = requests.delete(request_url, headers=request_headers)
             else:
                 raise InvalidMethodException("Invalid method %s" % method)
         except:
@@ -285,6 +303,7 @@ if __name__ == '__main__':
         config = json.load(f)
     logging.config.dictConfig(config)
     c = GlacierClient('us-east-1', debug=False)
+    sys.exit(0)
     if len(sys.argv) > 1:
         print(sys.argv)
         c.multiupload_archive('Foto',sys.argv[1])
@@ -308,4 +327,4 @@ if __name__ == '__main__':
     # print(response.status_code)
     # print(response.text)
     # print(response.encoding)
-    # print(response.headers)
+    # print(response.headers)    
