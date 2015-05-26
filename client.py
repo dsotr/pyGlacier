@@ -25,7 +25,7 @@ class GlacierClient:
         if region in settings.REGIONS:
             self.region = region
         else:
-            raise InvalidRegionException('Invalid region %s.\nAvailable regions: %s' % (region, str(settings.REGIONS)))
+            raise ValueError('Invalid region %s.\nAvailable regions: %s' % (region, str(settings.REGIONS)))
         self.host = 'glacier.%s.amazonaws.com' % self.region
         self.payload = ''
         self.debug = debug
@@ -99,12 +99,22 @@ class GlacierClient:
 
     def list_vaults(self):
         param = GlacierParams()
-        param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults')
         self.make_authorization_header(param)
         vault_resp = self.perform_request(param)
         self.logger.info("Vaults list: %s", vault_resp.text)
         return vault_resp
+
+    def describe_vault(self, vault):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'GET')
+        param.set(GlacierParams.URI, '/-/vaults/%s' %vault)
+        self.make_authorization_header(param)
+        vault_resp = self.perform_request(param)
+        self.logger.info("Vault %s content: %s", vault, vault_resp.text)
+        return vault_resp
+
+
 
     def initiate_multipart_upload(self, vault_name, multipard_desc, part_size=settings.DEFAULT_PART_SIZE):
         self.logger.info("Initiate multipart upload for %s", multipard_desc)
@@ -152,7 +162,7 @@ class GlacierClient:
         self.logger.info("Upload ID received: %s" , upload_id)
         if not upload_id:
             self.logger.error("Invalid upload ID received: %s" , upload_id)
-            raise InvalidIDException()
+            raise ValueError("Invalid upload ID received: %s" %upload_id)
         # Setup tree hashes for archive parts
         archive_size = os.path.getsize(archive_path)
         self.logger.info("Archive size: %i", archive_size)
@@ -237,7 +247,7 @@ class GlacierClient:
             elif method == 'DELETE':
                 pass
             else:
-                raise InvalidMethodException("Invalid method %s" % method)
+                raise ValueError("Invalid method %s for class requests" % method)
         except:
             self.logger.error("Unable to perform request: %s" % sys.exc_info()[0])
             raise
@@ -264,17 +274,6 @@ class GlacierClient:
     def get_archive_name(self, file_path):
         """returns the archive name from the file path"""
         return os.path.basename(file_path)
-
-
-class InvalidRegionException(Exception):
-    pass
-
-
-class InvalidMethodException(Exception):
-    pass
-
-class InvalidIDException(Exception):
-    pass
 
 if __name__ == '__main__':
     # logging.basicConfig(filename='trace.log', format='%(asctime)s\t%(levelname)s\t%(funcName)s()\t%(message)s', level=logging.DEBUG)

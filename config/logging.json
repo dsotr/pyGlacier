@@ -3,17 +3,17 @@
     "disable_existing_loggers": true,
     "formatters": {
         "simple": {
-            "format": "%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s"
+            "format": "%(asctime)s\t%(name)15s\t%(levelname)10s\t%(message)s"
         },
         "rich": {
-           "format": "%(asctime)s\t%(name)s\t%(lineno)s\t%(levelname)s\t%(funcName)s()\t%(message)s"
+           "format": "%(asctime)s\t%(name)15s\t%(lineno)4s\t%(levelname)10s\t%(funcName)15s()\t%(message)s"
         }
     },
 
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "level": "DEBUG",
+            "level": "INFO",
             "formatter": "rich",
             "stream": "ext://sys.stdout"
         },
