@@ -1,13 +1,21 @@
 # -*- coding: latin-1 -*-
 
-import sys, os, hashlib, hmac, codecs, logging, settings
+import sys
+import os
+import hashlib
+import hmac
+import codecs
+import logging
+
+import settings
 from util.progressbar import AnimatedProgressBar
 
 
 class Signer:
-    '''
+    """
     Utility class for signing requests with the amazon keys
-    '''
+    """
+
     def __init__(self):
         # Read AWS access key from env. variables or configuration file
         self.access_key = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -27,7 +35,6 @@ class Signer:
 
     def signHex(self, key, msg):
         return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).hexdigest()
-
 
     def getSignatureKey(self, dateStamp, regionName, serviceName):
         kDate = self.sign(('AWS4' + self.secret_key).encode('utf-8'), dateStamp)
@@ -53,29 +60,23 @@ def tree_hash(file_path, start, bytes_number):
     :return: the tree hash of the required part
     """
     l = []
-    #reader = ChunkReader(file_path, start, bytes_number, callback_function=progress_bar("Tree hash"))
-    chunk_file = ChunkFileObject(file_path, 'rb', start = start, end = start + bytes_number )
-    # g = reader.get_chunk_generator()
-    # for data in g:
-    #     l.append(hashlib.sha256(data).digest())
+    chunk_file = ChunkFileObject(file_path, 'rb', start=start, end=start + bytes_number)
     while True:
         data = chunk_file.read(settings.TREE_HASH_PART_SIZE)
         if data:
             l.append(hashlib.sha256(data).digest())
         else:
             break
-    # return build_tree_from_root(l)[-1][0].encode("hex")
     tree_hash_root = build_tree_from_root(l)[-1][0]
     return tree_hash_root
-    # return codecs.encode(tree_hash_root, 'hex').decode()
 
 
 def build_tree_from_root(root, parent=None):
-    '''
+    """
     :param root: array with the hashes of each 1Mb chunk
-    :param parent: used for recursion
+    :param parent: list used for recursion
     :return: the final tree hash byte string
-    '''
+    """
     if not parent:
         parent = [root]
     if len(root) < 2:
@@ -95,11 +96,11 @@ def build_tree_from_root(root, parent=None):
 
 
 def bytes_to_hex(b_str):
-    '''
+    """
     Converts an input byte string to its hex representation
     :param b_str: input byte string
     :return: a string with the hex representation of the input
-    '''
+    """
     return codecs.encode(b_str, 'hex_codec').decode()
 
 
@@ -134,49 +135,24 @@ class ChunkFileObject(object):
         if not self.end or self.end > self.file_obj.tell():
             self.end = self.file_obj.tell()
         # reset file index to 0
-        self.logger.debug('Instantiate FileChunkObject[%s-%s] with args: %s and kwywords: %s' %(self.start, self.end, args, kwds))
+        self.logger.debug(
+            'Instantiate FileChunkObject[%s-%s] with args: %s and kwywords: %s' % (self.start, self.end, args, kwds))
         self.seek(0)
-
-    # def __len__(self):
-    #     return self.end - self.start
-
-    # def __getitem__(self, *args, **kwargs):
-    #     if args and args[0]:
-    #         if type(args[0]) == slice:
-    #             self.logger.debug("Requested slice: %s", str(args[0]))
-    #             start = args[0].start + self.start
-    #             if args[0].stop:
-    #                 end = self.start + args[0].stop
-    #             else:
-    #                 end = self.end
-    #             sliced_chunk_file_object = ChunkFileObject(*self.args, start = start, end = end, callback = self.callback)
-    #             return sliced_chunk_file_object
-
-    # def __iter__(self):
-    #     self.logger.debug("call to iter method")
-    #     return self
-    #
-    # def __next__(self):
-    #     while self.tell() < self.end:
-    #         self.logger.debug("Iterating from position %i (end=%i)", self.tell(), self.end)
-    #         yield self.read(2**13)
 
     def read(self, *args, **kwargs):
         if args:
             current_cursor = self.file_obj.tell()
-            read_bytes = current_cursor - self.start
+            # read_bytes = current_cursor - self.start
             if current_cursor + int(args[0]) > self.end:
                 new_args = list(args)
                 new_args[0] = self.end - current_cursor
-                self.logger.debug("reascaling read length from %i to %i" %(args[0], new_args[0]))
+                self.logger.debug("Rescaling read length from %i to %i" % (args[0], new_args[0]))
                 args = tuple(new_args)
-            # print('Serving %i bytes (%i - %i) from ChunkFileReader[%i-%i] read(bytes) method' %(
-            #     args[0], current_cursor, current_cursor+args[0], self.start, self.end)) # TODO: replace this with a callback function
+            # callback function to show progress
             if self.callback:
                 self.callback(self.start, self.end, args[0])
             return self.file_obj.read(*args, **kwargs)
         else:
-            # print("Serving %i bytes from ChunkFileReader read() method" %(self.end - self.file_obj.tell()))
             return self.file_obj.read(self.end - self.file_obj.tell())
 
     def seek(self, *args, **kwargs):
@@ -187,7 +163,7 @@ class ChunkFileObject(object):
                 new_args.append(os.SEEK_SET)
             if new_args[1] == os.SEEK_SET:  # Absolute file positioning
                 new_args[0] = args[0] + self.start
-            elif new_args[1] == os.SEEK_CUR: # Relative to current position
+            elif new_args[1] == os.SEEK_CUR:  # Relative to current position
                 new_args = [self.file_obj.tell() + args[0], os.SEEK_SET]
             elif new_args[1] == os.SEEK_END:  # Relative to end position
                 if new_args[0] == 0:
@@ -209,19 +185,19 @@ class ChunkFileObject(object):
         return self.file_obj.close()
 
 
-
 def progress_bar(title, start, end):
-    '''
+    """
     Returns a progress bar function which displays the progress through an AnimatedProgressBar
     :param title: prefix name to display
     :param start: starting position of the file chunk
     :param end: last byte position of the file chunk
     :return: a function which displays the progress update after every call
-    '''
-    p = AnimatedProgressBar(start = 0, end = end - start, format=title+' [%(fill)s>%(blank)s] %(progress)s%%', width=25)
+    """
+    p = AnimatedProgressBar(start=0, end=end - start, format=title + ' [%(fill)s>%(blank)s] %(progress)s%%', width=30)
 
     def progress(x, y, z):
         # print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')  # , flush=True)
         p + z
         p.show_progress()
+
     return progress

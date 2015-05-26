@@ -15,7 +15,8 @@ class ProgressBar(object):
         format  Format
         incremental
     """
-    def __init__(self, start=0, end=10, width=12, fill='=', blank='.', format='[%(fill)s>%(blank)s] %(progress)s%%', incremental=True):
+    def __init__(self, start=0, end=10, width=12, fill='=', blank='.',
+                 format='[%(fill)s>%(blank)s] %(progress)s%%', incremental=True):
         super(ProgressBar, self).__init__()
 
         self.start = start
@@ -66,7 +67,9 @@ class AnimatedProgressBar(ProgressBar):
         if hasattr(self.stdout, 'isatty') and self.stdout.isatty():
             self.stdout.write('\r')
         else:
+            # hacked to work with my IDE :)
             self.stdout.write('\r')
+            self.stdout.write('\n')
         self.stdout.write(str(self))
         self.stdout.flush()
 
