@@ -93,6 +93,7 @@ class GlacierClient:
 
     def list_vaults(self):
         param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults')
         self.make_authorization_header(param)
         vault_resp = self.perform_request(param)
@@ -207,13 +208,73 @@ class GlacierClient:
         self.logger.info("Archive delete result: %s", resp.status_code)
         return resp
 
+    def list_jobs(self, vault_name):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'GET')
+        param.set(GlacierParams.URI, '/-/vaults/%s/jobs' %vault_name)
+        self.make_authorization_header(param)
+        resp = self.perform_request(param)
+        self.logger.info("Vault %s jobs: %s", vault_name, resp.text)
+        return resp
+
+    def describe_job(self, vault_name, job_id):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'GET')
+        param.set(GlacierParams.URI, '/-/vaults/%s/jobs/%s' %(vault_name,job_id))
+        self.make_authorization_header(param)
+        resp = self.perform_request(param)
+        self.logger.info("Job %s description: %s", job_id, resp.text)
+        return resp
+
+    def initiate_job(self, vault_name, json_body: dict):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'POST')
+        param.set(GlacierParams.URI, '/-/vaults/%s/jobs' %vault_name)
+        param.set(GlacierParams.PAYLOAD, json_body)
+        self.make_authorization_header(param)
+        resp = self.perform_request(param)
+        # TODO: get job ID
+        self.logger.info("Job initiation: %s", resp.text)
+        return resp
+
+    def initiate_inventory_job(self, vault_name):
+        """
+        Inventory request. It doesn't use start-end dates, nor limits or markers.
+        :param vault_name: Vault name for the inventory request
+        :return: the id of the job or None
+        """
+        body = {
+            "Type": "inventory-retrieval",
+            "Description": "pyGlacier inventory retrieval",
+            "Format": "JSON",
+            # "SNSTopic": String,
+            # "InventoryRetrievalParameters": {
+                # "StartDate": String,
+                # "EndDate": String,
+                # "Limit": String,
+                # "Marker": String
+            # }
+        }
+        json_body = json.dumps(body)
+        resp = self.initiate_job(vault_name, json_body)
+        if resp:
+            return resp.headers.get("x-amz-job-id", None)
+
+    def get_archive_job(self):
+        # TODO: implement method
+        pass
+
+    def get_job_output(self):
+        # TODO: implement method
+        pass
+
     def upload_archive(self, vault_name, file_path):
-        '''
+        """
         Upload a file in a single upload (not multipart)
         :param file_path: path of the file to upload
         :param vault_name: Vault name
         :return: The Requests response object
-        '''
+        """
         self.logger.info("Uploading archive %s", file_path)
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
@@ -294,8 +355,9 @@ if __name__ == '__main__':
     with open(log_path, 'rt') as f:
         config = json.load(f)
     logging.config.dictConfig(config)
-    c = GlacierClient('us-east-1', debug=False)
-    sys.exit(0)
+    c = GlacierClient('us-east-1')
+    # c.list_vaults()
+    # sys.exit(0)
     # if len(sys.argv) > 1:
     #     print(sys.argv)
     #     c.multiupload_archive('Foto',sys.argv[1])

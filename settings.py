@@ -77,7 +77,7 @@ class GlacierParams:
         self.set(GlacierParams.DATE, t.strftime('%Y%m%d'))
 
     def get_payload_content(self):
-        ''' Read payload data and brings the cursor back to 0 so that it can be used again
+        ''' Read payload data and ?brings the cursor back to 0 so that it can be used again
         '''
         if self.get(GlacierParams.PAYLOAD_CONTENT):
             return self.get(GlacierParams.PAYLOAD_CONTENT)
@@ -85,8 +85,13 @@ class GlacierParams:
         if not payload:
             # return None
             return b''
-        content = payload.read()
-        payload.seek(0)
+        if type(payload) == str:
+            content = payload
+        elif payload.hasattr('read'):
+            content = payload.read()
+            payload.seek(0)
+        else:
+            content = None
         self.set(GlacierParams.PAYLOAD_CONTENT, content)
         return content
 
