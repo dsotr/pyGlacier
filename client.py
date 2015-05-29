@@ -233,7 +233,6 @@ class GlacierClient:
         param.set(GlacierParams.PAYLOAD, json_body)
         self.make_authorization_header(param)
         resp = self.perform_request(param)
-        # TODO: get job ID
         self.logger.info("Job initiation: %s", resp.text)
         return resp
 
@@ -264,9 +263,15 @@ class GlacierClient:
         # TODO: implement method
         pass
 
-    def get_job_output(self):
-        # TODO: implement method
-        pass
+    def get_job_output(self, vault_name, job_id):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'GET')
+        param.set(GlacierParams.URI, '/-/vaults/%s/jobs/%s/output' %(vault_name, job_id))
+        self.make_authorization_header(param)
+        resp = self.perform_request(param)
+        if resp and resp.status_code == 200:
+            self.logger.info("Job output received")
+        return resp
 
     def upload_archive(self, vault_name, file_path):
         """
