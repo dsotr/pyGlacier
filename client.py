@@ -280,17 +280,19 @@ class GlacierClient:
         :param vault_name: Vault name
         :return: The Requests response object
         """
-        self.logger.info("Uploading archive %s", file_path)
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/archives' % vault_name)
         param.set_header('Content-Length', str(os.path.getsize(file_path)))
         param.set_header('x-amz-archive-description', self.get_archive_name(file_path))
-        content = ChunkFileObject(file_path, 'rb')
+        self.logger.info("Archive description: %s", self.get_archive_name(file_path))
+        content = ChunkFileObject(file_path, 'rb', callback=progress_bar("Upload archive", 0, str(os.path.getsize(file_path)) - 1))
         param.set(GlacierParams.PAYLOAD, content)
+        self.logger.info("Hashing archive %s", file_path)
         param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
         param.set_header('x-amz-sha256-tree-hash', bytes_to_hex(tree_hash(file_path, 0, content.end)))
         self.make_authorization_header(param)
+        self.logger.info("Uploading archive %s", file_path)
         upload_resp = self.perform_request(param)
         if not upload_resp:
             self.logger.error("Error compliting upload multipart: No response received")
@@ -363,7 +365,10 @@ if __name__ == '__main__':
     c = GlacierClient('us-east-1')
     # c.list_vaults()
     # sys.exit(0)
-    # if len(sys.argv) > 1:
+    if len(sys.argv) > 2:
+        c.upload_archive(sys.argv[0], sys.argv[1])
+    else:
+        print("Usage: %s <vault_name> <archive_name>" %sys.argv[0])
     #     print(sys.argv)
     #     c.multiupload_archive('Foto',sys.argv[1])
     #     sys.exit(0)
