@@ -8,5 +8,4 @@ __pycache__/
 #testfiles
 *.db
 *.log
-*.txt
 *.tar
