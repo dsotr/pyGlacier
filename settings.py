@@ -87,7 +87,7 @@ class GlacierParams:
             return b''
         if type(payload) == str:
             content = payload
-        elif payload.hasattr('read'):
+        elif hasattr(payload, 'read'):
             content = payload.read()
             payload.seek(0)
         else:
