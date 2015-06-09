@@ -69,7 +69,7 @@ class AnimatedProgressBar(ProgressBar):
         else:
             # hacked to work with my IDE :)
             self.stdout.write('\r')
-            self.stdout.write('\n')
+            # self.stdout.write('\n')
         self.stdout.write(str(self))
         self.stdout.flush()
 

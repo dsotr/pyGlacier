@@ -6,7 +6,7 @@
             "format": "%(asctime)s\t%(name)15s\t%(levelname)10s\t%(message)s"
         },
         "rich": {
-           "format": "%(asctime)s\t%(name)15s\t%(lineno)4s\t%(levelname)10s\t%(funcName)15s()\t%(message)s"
+           "format": "%(asctime)s\t%(name)15s\t<line %(lineno)4s>\t%(levelname)10s\t%(funcName)15s()\t%(message)s"
         }
     },
 

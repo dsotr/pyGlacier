@@ -288,7 +288,7 @@ class GlacierClient:
         self.logger.info("Archive description: %s", self.get_archive_name(file_path))
         content = ChunkFileObject(file_path, 'rb', callback=progress_bar("Upload archive", 0, str(os.path.getsize(file_path)) - 1))
         param.set(GlacierParams.PAYLOAD, content)
-        self.logger.info("Hashing archive %s", file_path)
+        self.logger.info("Hashing archive %s which has size %i", file_path, os.path.getsize(file_path))
         param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
         param.set_header('x-amz-sha256-tree-hash', bytes_to_hex(tree_hash(file_path, 0, content.end)))
         self.make_authorization_header(param)
@@ -298,7 +298,7 @@ class GlacierClient:
             self.logger.error("Error compliting upload multipart: No response received")
         if upload_resp.status_code > 299:
             self.logger.error("Error compliting upload multipart: %s", upload_resp.text)
-        self.logger.info("Complete part response: %s", upload_resp.text)
+        self.logger.info("Upload complete.")
         return upload_resp
 
     def perform_request(self, param):

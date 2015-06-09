@@ -197,8 +197,9 @@ def progress_bar(title, start, end):
 
     def progress(x, y, z):
         # print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')  # , flush=True)
-        p + z
-        p.show_progress()
+        if z:
+            p + z
+            p.show_progress()
 
     return progress
 
