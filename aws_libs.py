@@ -197,7 +197,27 @@ def progress_bar(title, start, end):
 
     def progress(x, y, z):
         # print(title, "%0.1f" % (float(y) / z * 100), '%', sep=' ', end='\r')  # , flush=True)
-        p + z
-        p.show_progress()
+        if z:
+            p + z
+            p.show_progress()
 
     return progress
+
+
+def dump_inventory(resp):
+    """
+    Write inventory response to a csv file
+    :param resp: response from GlacierClient.get_inventory_output
+    """
+    jr=resp.json()
+    filename = 'Inventory-%s.csv' %jr['InventoryDate'][:10]
+    archives=jr['ArchiveList']
+    f=open(filename,'w')
+    for e in archives:
+        f.write(e['ArchiveDescription'])
+        f.write(';')
+        f.write(str(e['Size']))
+        f.write(';')
+        f.write(e['CreationDate'][:10])
+        f.write('\n')
+    f.close()
