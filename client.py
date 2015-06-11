@@ -286,7 +286,7 @@ class GlacierClient:
         param.set_header('Content-Length', str(os.path.getsize(file_path)))
         param.set_header('x-amz-archive-description', self.get_archive_name(file_path))
         self.logger.info("Archive description: %s", self.get_archive_name(file_path))
-        content = ChunkFileObject(file_path, 'rb', callback=progress_bar("Upload archive", 0, str(os.path.getsize(file_path)) - 1))
+        content = ChunkFileObject(file_path, 'rb', callback=progress_bar("Upload archive", 0, os.path.getsize(file_path) - 1))
         param.set(GlacierParams.PAYLOAD, content)
         self.logger.info("Hashing archive %s", file_path)
         param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
@@ -366,7 +366,7 @@ if __name__ == '__main__':
     # c.list_vaults()
     # sys.exit(0)
     if len(sys.argv) > 2:
-        c.upload_archive(sys.argv[0], sys.argv[1])
+        c.upload_archive(sys.argv[1], sys.argv[2])
     else:
         print("Usage: %s <vault_name> <archive_name>" %sys.argv[0])
     #     print(sys.argv)
