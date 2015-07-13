@@ -187,6 +187,8 @@ class GlacierClient:
         compl_resp = self.complete_multipart_upload(vault_name, upload_id, archive_size, archive_tree_hash)
         if not compl_resp or compl_resp.status_code > 299:
             self.logger.error("Error compliting upload multipart: %s", compl_resp.text)
+            # TODO: Raise reasonable exception
+            raise
         self.logger.info("Complete part response: %s", compl_resp.text)
         return compl_resp
 
@@ -328,6 +330,7 @@ class GlacierClient:
                 raise ValueError("Invalid method %s for class requests" % method)
         except:
             self.logger.error("Unable to perform request: %s" % sys.exc_info()[0])
+            # TODO: reaise reasonable exception
             raise
         if response:
             self.logger.debug("Response: %s", response.text)

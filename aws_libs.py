@@ -18,6 +18,7 @@ class Signer:
 
     def __init__(self):
         # Read AWS access key from env. variables or configuration file
+        # TODO: allow other access key retrieval options
         self.access_key = os.environ.get('AWS_ACCESS_KEY_ID')
         self.secret_key = os.environ.get('AWS_SECRET_ACCESS_KEY')
         if self.access_key is None or self.secret_key is None:
