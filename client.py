@@ -366,11 +366,11 @@ if __name__ == '__main__':
     # c.list_vaults()
     # sys.exit(0)
     if len(sys.argv) > 2:
-        c.upload_archive(sys.argv[1], sys.argv[2])
+    #    c.upload_archive(sys.argv[1], sys.argv[2])
+        c.multiupload_archive(sys.argv[1], sys.argv[2])
     else:
         print("Usage: %s <vault_name> <archive_name>" %sys.argv[0])
     #     print(sys.argv)
-    #     c.multiupload_archive('Foto',sys.argv[1])
     #     sys.exit(0)
     # while True:
     #     cmd = input("Enter upload path[default tests/test.txt]:")
