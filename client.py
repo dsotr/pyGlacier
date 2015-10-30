@@ -284,7 +284,8 @@ class GlacierClient:
         delete_resp = self.perform_request(param)
         if not delete_resp or delete_resp.status_code > 299:
             self.logger.error("Error deleting archive: No response received")
-        self.logger.info("Archive %s deleted.", archive_id)
+        else:
+            self.logger.info("Archive %s deleted.", archive_id)
         return delete_resp
 
     def upload_archive(self, vault_name, file_path):
