@@ -275,6 +275,17 @@ class GlacierClient:
             self.logger.info("Job output received")
         return resp
 
+    def delete_archive(self, vault_name, archive_id):
+        param = GlacierParams()
+        param.set(GlacierParams.METHOD, 'DELETE')
+        param.set(GlacierParams.URI, '/-/vaults/%s/archives/%s' % (vault_name, archive_id) )
+        self.logger.info("Delete archive: %s", archive_id)
+        delete_resp = self.perform_request(param)
+        if not delete_resp or delete_resp.status_code > 299:
+            self.logger.error("Error deleting archive: No response received")
+        self.logger.info("Archive %s deleted.", archive_id)
+        return delete_resp
+
     def upload_archive(self, vault_name, file_path):
         """
         Upload a file in a single upload (not multipart)
