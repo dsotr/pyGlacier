@@ -279,6 +279,7 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'DELETE')
         param.set(GlacierParams.URI, '/-/vaults/%s/archives/%s' % (vault_name, archive_id) )
+        self.make_authorization_header(param)
         self.logger.info("Delete archive: %s", archive_id)
         delete_resp = self.perform_request(param)
         if not delete_resp or delete_resp.status_code > 299:
