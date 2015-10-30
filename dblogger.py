@@ -45,9 +45,9 @@ class DBLogger():
             headers text
             )'''
         )
-        # Files table
+        # Inventory table
         cursor.execute(
-            '''create table if not exists files (
+            '''create table if not exists inventory (
             id integer primary key,
             vault text,
             file_name text,
