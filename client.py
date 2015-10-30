@@ -276,6 +276,11 @@ class GlacierClient:
         return resp
 
     def delete_archive(self, vault_name, archive_id):
+        ''' Delete a glacier archive from a vault
+        :param vault_name: Vault name
+        :param archive_id: ID of the archive to delete
+        :return: http response of the deletion operation
+        '''
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'DELETE')
         param.set(GlacierParams.URI, '/-/vaults/%s/archives/%s' % (vault_name, archive_id) )
