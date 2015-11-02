@@ -95,7 +95,6 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults')
-        self.make_authorization_header(param)
         vault_resp = self.perform_request(param)
         self.logger.info("Vaults list: %s", vault_resp.text)
         return vault_resp
@@ -104,7 +103,6 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults/%s' % vault)
-        self.make_authorization_header(param)
         vault_resp = self.perform_request(param)
         self.logger.info("Vault %s content: %s", vault, vault_resp.text)
         return vault_resp
@@ -116,7 +114,6 @@ class GlacierClient:
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads' % vault_name)
         param.set_header('x-amz-archive-description', multipard_desc)
         param.set_header('x-amz-part-size', str(part_size))
-        self.make_authorization_header(param)
         return self.perform_request(param)
 
     def complete_multipart_upload(self, vault_name, upload_id, archive_size, archive_tree_hash):
@@ -126,7 +123,6 @@ class GlacierClient:
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
         param.set_header('x-amz-archive-size', archive_size)
         param.set_header('x-amz-sha256-tree-hash', archive_tree_hash)
-        self.make_authorization_header(param)
         return self.perform_request(param)
 
     def upload_part(self, vault_name, upload_id, part_size, part_number, archive_path, archive_hash, part_tree_hash):
@@ -146,7 +142,6 @@ class GlacierClient:
         # logging.debug('Content-Range:bytes %i-%i/*', part_number * part_size, min(archive_size, (part_number + 1) * part_size ) -1 )
         param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
         param.set_header('x-amz-sha256-tree-hash', part_tree_hash)
-        self.make_authorization_header(param)
         return self.perform_request(param)
 
     def multiupload_archive(self, vault_name, archive_path):
@@ -196,7 +191,6 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads' % vault_name)
-        self.make_authorization_header(param)
         list_resp = self.perform_request(param)
         self.logger.info("Multiupload list: %s", list_resp.text)
         return list_resp
@@ -205,7 +199,6 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'DELETE')
         param.set(GlacierParams.URI, '/-/vaults/%s/multipart-uploads/%s' % (vault_name, upload_id))
-        self.make_authorization_header(param)
         resp = self.perform_request(param)
         self.logger.info("Archive delete result: %s", resp.status_code)
         return resp
@@ -214,7 +207,6 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults/%s/jobs' %vault_name)
-        self.make_authorization_header(param)
         resp = self.perform_request(param)
         self.logger.info("Vault %s jobs: %s", vault_name, resp.text)
         return resp
@@ -223,7 +215,6 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults/%s/jobs/%s' %(vault_name,job_id))
-        self.make_authorization_header(param)
         resp = self.perform_request(param)
         self.logger.info("Job %s description: %s", job_id, resp.text)
         return resp
@@ -233,7 +224,6 @@ class GlacierClient:
         param.set(GlacierParams.METHOD, 'POST')
         param.set(GlacierParams.URI, '/-/vaults/%s/jobs' %vault_name)
         param.set(GlacierParams.PAYLOAD, json_body)
-        self.make_authorization_header(param)
         resp = self.perform_request(param)
         self.logger.info("Job initiation: %s", resp.text)
         return resp
@@ -269,7 +259,6 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'GET')
         param.set(GlacierParams.URI, '/-/vaults/%s/jobs/%s/output' %(vault_name, job_id))
-        self.make_authorization_header(param)
         resp = self.perform_request(param)
         if resp and resp.status_code == 200:
             self.logger.info("Job output received")
@@ -284,7 +273,6 @@ class GlacierClient:
         param = GlacierParams()
         param.set(GlacierParams.METHOD, 'DELETE')
         param.set(GlacierParams.URI, '/-/vaults/%s/archives/%s' % (vault_name, archive_id) )
-        self.make_authorization_header(param)
         self.logger.info("Delete archive: %s", archive_id)
         delete_resp = self.perform_request(param)
         if not delete_resp or delete_resp.status_code > 299:
@@ -311,7 +299,6 @@ class GlacierClient:
         self.logger.info("Hashing archive %s which has size %i", file_path, os.path.getsize(file_path))
         param.set_header('x-amz-content-sha256', self.signer.hashHex(param.get_payload_content()))
         param.set_header('x-amz-sha256-tree-hash', bytes_to_hex(tree_hash(file_path, 0, content.end)))
-        self.make_authorization_header(param)
         self.logger.info("Uploading archive %s", file_path)
         upload_resp = self.perform_request(param)
         if not upload_resp:
@@ -322,6 +309,7 @@ class GlacierClient:
         return upload_resp
 
     def perform_request(self, param):
+        self.make_authorization_header(param)
         method = param.get(GlacierParams.METHOD)
         request_headers = param.get(GlacierParams.HEADERS)
         endpoint = 'https://%s%s' % (self.host, param.get(GlacierParams.URI))
