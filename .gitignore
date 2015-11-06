@@ -6,7 +6,6 @@ __pycache__/
 .idea/
 
 #testfiles
-*.db
 *.log
 *.tar
 
